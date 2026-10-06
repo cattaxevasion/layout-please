@@ -11,9 +11,9 @@ describe('방 꼭짓점 편집과 벽 자동 재생성', () => {
   it('꼭짓점을 옮기면 그 방의 벽이 따라오고 두께가 유지된다', () => {
     const h = createSampleHouse();
     const room = ldk(h);
-    // 오른쪽 벽(꼭짓점 3, 4)을 오른쪽으로 20 이동
+    // 오른쪽 벽(꼭짓점 5, 6)을 오른쪽으로 20 이동
     const before = owned(h, room.id);
-    const pts = room.points.map((p, i) => (i === 3 || i === 4 ? { x: p.x + 20, y: p.y } : p));
+    const pts = room.points.map((p, i) => (i === 5 || i === 6 ? { x: p.x + 20, y: p.y } : p));
     const h2 = st.setRoomPoints(h, room.id, pts);
     const after = owned(h2, room.id);
     expect(after).toHaveLength(before.length);
@@ -28,8 +28,8 @@ describe('방 꼭짓점 편집과 벽 자동 재생성', () => {
   it('꼭짓점을 하나씩 옮겨 변이 잠깐 비스듬해져도 두께가 유지된다', () => {
     let h = createSampleHouse();
     const room = ldk(h);
-    h = st.moveVertex(h, room.id, 3, { x: 392, y: 68 }); // 오른쪽 벽이 잠깐 비스듬
-    h = st.moveVertex(h, room.id, 4, { x: 392, y: 359 });
+    h = st.moveVertex(h, room.id, 5, { x: 392, y: 68 }); // 오른쪽 벽이 잠깐 비스듬
+    h = st.moveVertex(h, room.id, 6, { x: 392, y: 359 });
     const right = owned(h, room.id).find((w) => Math.abs(w.a.x - w.b.x) < 1e-9 && w.a.x > 390)!;
     expect(right.thickness).toBe(15);
   });
@@ -46,7 +46,7 @@ describe('방 꼭짓점 편집과 벽 자동 재생성', () => {
       });
     };
     // 왼쪽 위 꼭짓점을 아주 조금 옮겨 모든 LDK 벽을 다시 만든다
-    const h2 = st.moveVertex(h, room.id, 0, { x: 0, y: 0.5 });
+    const h2 = st.moveVertex(h, room.id, 0, { x: 0, y: 26 });
     expect(h2.doors).toHaveLength(h.doors.length);
     const m2 = wallsById(h2);
     for (const d of h2.doors) expect(m2.has(d.wallId)).toBe(true);

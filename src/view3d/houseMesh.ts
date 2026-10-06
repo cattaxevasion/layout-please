@@ -9,6 +9,8 @@ export interface WallObject {
   group: THREE.Group;
   material: THREE.MeshStandardMaterial;
   edges: THREE.LineBasicMaterial;
+  /** 이 벽에 달린 문짝 재질 (벽과 함께 반투명해진다) */
+  leaf: THREE.MeshStandardMaterial;
 }
 
 export interface HouseObjects {
@@ -17,6 +19,9 @@ export interface HouseObjects {
 }
 
 const WALL_COLOR = '#f3f0ea';
+const DOOR_COLOR = '#e4dccd';
+/** 문짝 두께 */
+const LEAF_T = 3;
 
 export function buildHouse(house: House): HouseObjects {
   const root = new THREE.Group();
@@ -42,6 +47,7 @@ export function buildHouse(house: House): HouseObjects {
     if (length < 0.1) continue;
     const material = new THREE.MeshStandardMaterial({ color: WALL_COLOR, roughness: 0.9, transparent: true, opacity: 1 });
     const edges = new THREE.LineBasicMaterial({ color: '#b9b2a5', transparent: true, opacity: 1 });
+    const leaf = new THREE.MeshStandardMaterial({ color: DOOR_COLOR, roughness: 0.7, transparent: true, opacity: 1 });
     const group = new THREE.Group();
     group.position.set(w.a.x, 0, w.a.y);
     group.rotation.y = -Math.atan2(u.y, u.x);
@@ -65,6 +71,18 @@ export function buildHouse(house: House): HouseObjects {
       const s = Math.max(0, d.offset);
       const e = Math.min(length, d.offset + d.width);
       piece(s, e, Math.min(d.height, H), H);
+      // 문짝 (닫힌 상태). 개구부는 문짝 없이 뚫어 둔다.
+      if (d.type !== 'opening' && e - s > 1) {
+        const h = Math.min(d.height, H) - 0.5;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(e - s - 1, h, LEAF_T), leaf);
+        m.position.set((s + e) / 2, h / 2, 0);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        group.add(m);
+        const line = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), edges);
+        line.position.copy(m.position);
+        group.add(line);
+      }
     }
     for (const win of wins) {
       const s = Math.max(0, win.offset);
@@ -82,7 +100,7 @@ export function buildHouse(house: House): HouseObjects {
     }
     group.userData.wallId = w.id;
     root.add(group);
-    walls.push({ wall: w, group, material, edges });
+    walls.push({ wall: w, group, material, edges, leaf });
   }
 
   for (const f of house.fixtures) {

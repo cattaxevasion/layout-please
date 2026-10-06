@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { buildShareUrl, shareSizeLevel, SHARE_WARN_LENGTH } from '../logic/share';
 import { getActiveLayout } from '../model/ops';
 import { actions, store, useApp } from '../store';
-import { exportJson, importJson, resetToSample } from './fileActions';
+import { exportJson, importJson, resetHouseToSample, resetToSample } from './fileActions';
 
 export function FileMenu() {
   const [open, setOpen] = useState(false);
@@ -42,6 +42,7 @@ export function FileMenu() {
           <button onClick={run(() => exportJson())}>JSON 내보내기</button>
           <button onClick={run(importJson)}>JSON 불러오기</button>
           <hr />
+          <button onClick={run(resetHouseToSample)}>집 구조만 최신 샘플로</button>
           <button class="danger" onClick={run(resetToSample)}>
             처음 샘플로 초기화
           </button>

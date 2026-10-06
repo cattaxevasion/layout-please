@@ -1,6 +1,6 @@
 // 첫 실행용 샘플: 사용자 집(LDK 8.5첩 + 양실 3.5첩), 실측값 기준.
 // 원점은 LDK 실내 왼쪽 위 모서리.
-// ※ 추정값: LDK 가로(365로 쟀지만 144+17+211=372로 계산), 양실 문 위치, 창문, 천장 높이, 외벽 두께.
+// ※ 추정값: LDK 가로(365로 쟀지만 144+17+211=372로 계산), 양실 문 위치, 창 가로 위치, 외벽 두께, 기둥 폭.
 
 import { wallsFromRoom } from '../logic/walls';
 import { newId } from './ids';
@@ -9,7 +9,7 @@ import { SCHEMA_VERSION } from './types';
 import type { Door, Furniture, House, HouseWindow, Layout, ProjectDoc, Room } from './types';
 
 // ── 실측값 ──
-const COUNTER_TOP_GAP = 25.5; // 위쪽 벽 ~ 주방 카운터
+const COUNTER_TOP_GAP = 25.5; // 위쪽 벽 ~ 주방 카운터 (이 자리는 기둥)
 const COUNTER_LEN = 150;
 const LEFT_LOWER = 225; // 카운터 끝 ~ 세면실 벽
 const KITCHEN_TO_CL = 173; // 카운터 앞면 ~ CL 왼쪽 벽
@@ -25,6 +25,7 @@ const PASSAGE_W = 144; // 세면실 앞 통로 폭
 const PASSAGE_WALL = 17; // 통로–양실 사이 벽
 const WASHROOM_WALL_LEN = 73.5; // 통로 쪽 세면실 벽 (나머지가 문)
 const DOOR_W = 68.5; // 미닫이 문 폭
+const CEILING = 250;
 
 // ── 파생값 ──
 // LDK 가로는 365로 쟀지만 아래쪽 실측 합(144+17+211)이 372이고, 372일 때 카운터 깊이가
@@ -70,8 +71,11 @@ export function createSampleHouse(): House {
     id: newId('r'),
     name: 'LDK',
     floorColor: '#e8dcc8',
+    // 왼쪽 위 모서리는 주방 카운터 위쪽 기둥(가로 = 카운터 깊이로 가정, 세로 25.5)만큼 막혀 있다
     points: [
-      { x: 0, y: 0 },
+      { x: 0, y: COUNTER_TOP_GAP },
+      { x: COUNTER_D, y: COUNTER_TOP_GAP },
+      { x: COUNTER_D, y: 0 },
       { x: CL_X, y: 0 },
       { x: CL_X, y: CL_D },
       { x: LDK_W, y: CL_D },
@@ -95,17 +99,24 @@ export function createSampleHouse(): House {
     ],
   };
 
-  // LDK 변: 0 위(현관·화장실 쪽) 1 CL 옆 2 CL 앞 3 오른쪽 외벽 4 양실 위쪽 5 통로–양실(양실 쪽에서 생성) 6 세면실 7 왼쪽 외벽
-  const ldkWalls = wallsFromRoom(ldk.points, [INT, INT, INT, EXT, BED_WALL, PASSAGE_WALL, INT, EXT], [5], ldk.id);
+  // LDK 변: 0 기둥 아랫면 1 기둥 옆면 2 위(현관·화장실 쪽) 3 CL 옆 4 CL 앞 5 오른쪽 외벽 6 양실 위쪽
+  //         7 통로–양실(양실 쪽에서 생성) 8 세면실 9 왼쪽 외벽
+  // 기둥 아랫면 벽을 기둥 높이(25.5)만큼 두껍게 해서 기둥 자리를 꽉 채운다.
+  const ldkWalls = wallsFromRoom(
+    ldk.points,
+    [COUNTER_TOP_GAP, INT, INT, INT, INT, EXT, BED_WALL, PASSAGE_WALL, INT, EXT],
+    [7],
+    ldk.id,
+  );
   // 양실 변: 0 위(LDK와 공유하므로 생략) 1 오른쪽 외벽 2 발코니 3·4 기둥 5 왼쪽
   const bedroomWalls = wallsFromRoom(bedroom.points, [BED_WALL, EXT, EXT, INT, INT, PASSAGE_WALL], [0], bedroom.id);
-  const [ldkTop, , ldkClosetFront, , ldkBedroomSide, ldkWashroomSide, ldkLeft] = ldkWalls;
+  const [, , ldkTop, , ldkClosetFront, , ldkBedroomSide, ldkWashroomSide, ldkLeft] = ldkWalls;
   const [, bedroomBalcony] = bedroomWalls;
 
   // 벽 a점은 볼록 모서리에서 이웃 벽 두께만큼 늘어나 있으므로 offset에 그만큼 더한다.
   const doors: Door[] = [
-    // 현관 → LDK: CL 왼쪽 벽에 붙어 있음
-    sliding(ldkTop.id, EXT + CL_X - DOOR_W, DOOR_W),
+    // 현관 → LDK: CL 왼쪽 벽에 붙어 있음 (위쪽 벽은 기둥 옆면 두께만큼 왼쪽으로 늘어나 있다)
+    sliding(ldkTop.id, CL_X - DOOR_W - (COUNTER_D - INT), DOOR_W),
     // CL 문
     sliding(ldkClosetFront.id, INT, CL_W - INT * 2),
     // LDK → 양실: 양실 왼쪽 끝에 있다고 가정 (위치 추정)
@@ -115,8 +126,8 @@ export function createSampleHouse(): House {
   ];
 
   const windows: HouseWindow[] = [
-    // LDK 왼쪽 창 (위치·크기 추정)
-    { id: newId('n'), wallId: ldkLeft.id, offset: 25.5, width: 75, sillHeight: 90, height: 110 },
+    // LDK 왼쪽 창: 높은 곳에 있는 가로로 긴 창 (바닥 150 ~ 210)
+    { id: newId('n'), wallId: ldkLeft.id, offset: 25.5, width: 75, sillHeight: 150, height: 60 },
     // 양실 발코니 창: 기둥 옆부터 오른쪽 벽까지 (높이 추정)
     {
       id: newId('n'),
@@ -129,7 +140,7 @@ export function createSampleHouse(): House {
   ];
 
   return {
-    ceilingHeight: 240,
+    ceilingHeight: CEILING,
     rooms: [ldk, bedroom],
     walls: [...ldkWalls, ...bedroomWalls],
     doors,

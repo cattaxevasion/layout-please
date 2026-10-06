@@ -288,6 +288,8 @@ export class Scene3D {
       }
       w.material.opacity = opacity;
       w.material.depthWrite = opacity === 1;
+      w.leaf.opacity = opacity === 1 ? 1 : 0.2;
+      w.leaf.depthWrite = opacity === 1;
       w.edges.opacity = opacity === 1 ? 1 : 0.35;
       w.group.scale.y = mode === 'hidden' ? Math.min(1, 15 / H) : 1;
       w.group.traverse((o) => {

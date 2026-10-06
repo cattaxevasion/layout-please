@@ -1,7 +1,7 @@
 // 파일·공유 관련 화면 동작 (다운로드, 파일 선택, 확인 창 등 브라우저 기능을 쓰는 부분).
 
 import { DocError } from '../model/migrate';
-import { createSampleDoc } from '../model/sample';
+import { createSampleDoc, createSampleHouse } from '../model/sample';
 import type { ProjectDoc } from '../model/types';
 import {
   cloneLayoutFresh,
@@ -51,6 +51,16 @@ export function importJson() {
 export function resetToSample() {
   if (!confirm('집 구조와 모든 배치안을 처음 샘플로 바꿀까요?\n(되돌리기로 취소할 수 있습니다)')) return;
   actions.replaceDoc(createSampleDoc());
+}
+
+/** 배치안과 내 프리셋은 그대로 두고 집 구조만 최신 샘플로 바꾼다 (샘플 집을 고친 뒤 반영할 때) */
+export function resetHouseToSample() {
+  if (!confirm('집 구조(방·벽·문·창·설비)만 최신 샘플로 바꿀까요?\n배치안과 가구는 그대로 둡니다. (되돌리기로 취소할 수 있습니다)')) {
+    return;
+  }
+  const doc = store.getState().history.present;
+  actions.replaceDoc({ ...doc, house: createSampleHouse() });
+  actions.notify('집 구조를 최신 샘플로 바꿨습니다.');
 }
 
 /** 공유 링크 열람을 마치고 내 데이터로 돌아간다 */

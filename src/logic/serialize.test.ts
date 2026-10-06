@@ -36,7 +36,7 @@ describe('공유받은 배치안 합치기', () => {
   it('집 구조가 다르면 null', () => {
     const mine = createSampleDoc();
     const other = createSampleDoc();
-    other.house = { ...other.house, ceilingHeight: 250 };
+    other.house = { ...other.house, ceilingHeight: 270 };
     const share = decodeShare(encodeShare(other.house, getActiveLayout(other)));
     expect(mergeShareIntoDoc(mine, share)).toBeNull();
   });
