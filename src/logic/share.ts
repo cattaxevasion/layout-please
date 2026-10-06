@@ -3,6 +3,7 @@
 // 링크를 짧게 하려고 객체를 필드 이름 없는 고정 순서 배열로 바꾸고, id는 짧은 번호(36진수)로 다시 매긴다.
 // 형식을 바꿀 때는 FORMAT을 올리고 fromCompact에 옛 형식 처리를 남겨 둔다.
 // 형식 2: 마감재(바닥재·벽지·문 표면)와 미닫이 문짝 수를 배열 끝에 추가. 형식 1 링크도 그대로 읽힌다.
+// 형식 3: 가구 올림 높이(elevation)를 가구 배열 끝에 추가.
 
 import LZString from 'lz-string';
 import { DocError, migrateShare } from '../model/migrate';
@@ -15,8 +16,8 @@ export const SHARE_WARN_LENGTH = 2000;
 /** 이보다 길면 브라우저나 서비스에 따라 아예 열리지 않을 수 있다 */
 export const SHARE_DANGER_LENGTH = 16000;
 
-const FORMAT = 2;
-const READABLE_FORMATS = [1, 2];
+const FORMAT = 3;
+const READABLE_FORMATS = [1, 2, 3];
 const DOOR_TYPES: DoorType[] = ['hinged', 'folding', 'sliding', 'opening'];
 
 /** 0.01cm 단위로 반올림 (부동소수 꼬리 제거) */
@@ -130,6 +131,7 @@ function toCompact(house: House, layout: Layout): Compact {
         n(f.x),
         n(f.y),
         n(f.rotation),
+        f.elevation ? n(f.elevation) : null,
       ]),
     ],
   };
@@ -201,7 +203,7 @@ function fromCompact(c: Compact): unknown {
       id: 'shared',
       name: c.l[0],
       updatedAt: Date.now(),
-      furniture: c.l[1].map(([id, name, shape, w, d, h, color, x, y, rot]) => ({
+      furniture: c.l[1].map(([id, name, shape, w, d, h, color, x, y, rot, elevation]) => ({
         id: str(id),
         name: str(name),
         shape: str(shape) as ShapeKind,
@@ -212,6 +214,7 @@ function fromCompact(c: Compact): unknown {
         x: num(x),
         y: num(y),
         rotation: num(rot),
+        ...opt('elevation', elevation),
       })),
     },
   };

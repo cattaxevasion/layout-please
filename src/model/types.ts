@@ -118,7 +118,11 @@ export type ShapeKind =
   | 'fridge'
   | 'waterServer'
   | 'microwave'
-  | 'fridgeMicrowave';
+  | 'fridgeMicrowave'
+  | 'rug'
+  | 'plant'
+  | 'floorLamp'
+  | 'tv';
 
 export interface Furniture {
   id: Id;
@@ -139,6 +143,8 @@ export interface Furniture {
   y: number;
   /** [0, 360) */
   rotation: number;
+  /** 바닥에서 띄운 높이 (서랍장 위 TV처럼 다른 가구 위에 올릴 때). 없으면 0 */
+  elevation?: number;
 }
 
 export interface FurniturePreset {

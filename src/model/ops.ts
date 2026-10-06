@@ -56,6 +56,7 @@ export function sanitizeFurniture(f: Furniture): Furniture {
     depth: Math.max(MIN_SIZE, f.depth),
     height: Math.max(MIN_SIZE, f.height),
     rotation: normalizeAngle(f.rotation),
+    ...(f.elevation !== undefined ? { elevation: Math.max(0, f.elevation) } : {}),
   };
 }
 

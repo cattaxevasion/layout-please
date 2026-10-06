@@ -50,8 +50,17 @@ function box(parent: THREE.Object3D, mat: THREE.Material, w: number, h: number, 
 const METAL = new THREE.MeshStandardMaterial({ color: '#3c3d3f', roughness: 0.45, metalness: 0.4 });
 const KNOB = new THREE.MeshStandardMaterial({ color: '#4a4a4a', roughness: 0.5 });
 const GLASS = new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.15, metalness: 0.2 });
+const LEAF = new THREE.MeshStandardMaterial({ color: '#5f8250', roughness: 0.8 });
+const LEAF_DARK = new THREE.MeshStandardMaterial({ color: '#46663c', roughness: 0.8 });
+const SHADE = new THREE.MeshStandardMaterial({
+  color: '#f4ecdc',
+  emissive: '#ffd9a0',
+  emissiveIntensity: 0.55,
+  roughness: 0.9,
+  side: THREE.DoubleSide,
+});
 /** 여러 가구가 같이 쓰는 재질. 가구마다 복제해서 쓰고, 지울 때 원본은 남긴다 */
-const SHARED = new Set<THREE.Material>([METAL, KNOB, GLASS]);
+const SHARED = new Set<THREE.Material>([METAL, KNOB, GLASS, LEAF, LEAF_DARK, SHADE]);
 
 /** 바닥 기준 원기둥 (반지름 r, 높이 h) */
 function cylinder(parent: THREE.Object3D, mat: THREE.Material, r: number, h: number, x: number, y0: number, z: number) {
@@ -249,6 +258,58 @@ const builders: Record<ShapeKind, (g: THREE.Group, W: number, D: number, H: numb
 
   fridge: buildFridge,
   microwave: buildMicrowave,
+
+  // 러그: 테두리(짙은 색) 위에 안쪽 면
+  rug(g, W, D, _H, p) {
+    const edge = box(g, p.dark, W, 0.6, D, 0, 0, 0);
+    const inner = box(g, p.main, W - 6, 0.8, D - 6, 0, 0.2, 0);
+    edge.castShadow = inner.castShadow = false;
+  },
+
+  // 화분: 화분 원기둥 + 잎(구 여러 개)
+  plant(g, W, D, H, p) {
+    const r = Math.min(W, D) / 2;
+    const potH = Math.min(H * 0.3, 35);
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.62, r * 0.48, potH, 20), p.main);
+    pot.position.y = potH / 2;
+    pot.castShadow = true;
+    g.add(pot);
+    const top = H - potH;
+    const blobs: [number, number, number, number, THREE.Material][] = [
+      [0, 0.35, 0, 0.55, LEAF_DARK],
+      [0.35, 0.55, 0.15, 0.5, LEAF],
+      [-0.3, 0.6, -0.2, 0.48, LEAF],
+      [0.05, 0.8, 0.3, 0.45, LEAF_DARK],
+      [-0.1, 0.92, -0.05, 0.4, LEAF],
+    ];
+    for (const [x, y, z, s, mat] of blobs) {
+      const rad = r * s * 1.4;
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(rad, 14, 10), mat);
+      leaf.position.set(x * r, potH + Math.min(top - rad, top * y), z * r);
+      leaf.scale.y = 0.85;
+      leaf.castShadow = true;
+      g.add(leaf);
+    }
+  },
+
+  // 플로어 스탠드: 받침 + 기둥(나무색) + 빛나는 갓
+  floorLamp(g, W, D, H, p) {
+    const r = Math.min(W, D) / 2;
+    cylinder(g, KNOB, r * 0.8, 2.5, 0, 0, 0);
+    cylinder(g, p.main, 1.3, H - 28, 0, 2.5, 0);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.65, r, 28, 24, 1, true), SHADE);
+    shade.position.y = H - 14;
+    g.add(shade);
+  },
+
+  // TV: 받침 + 목 + 얇은 화면
+  tv(g, W, D, H, p) {
+    const standH = Math.min(8, H * 0.15);
+    box(g, p.main, W * 0.4, 1.5, D * 0.9, 0, 0, 0);
+    box(g, p.main, 6, standH, 3, 0, 1.5, -1);
+    box(g, p.main, W, H - standH, 3, 0, standH, -1);
+    box(g, GLASS, W - 2, H - standH - 2, 0.4, 0, standH + 1, 0.7);
+  },
 
   // 냉장고 위에 전자레인지 (전자레인지는 냉장고 앞면에 맞춰 올린다)
   fridgeMicrowave(g, W, D, H, p) {

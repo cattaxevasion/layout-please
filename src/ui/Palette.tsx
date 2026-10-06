@@ -3,7 +3,7 @@
 import { useState } from 'preact/hooks';
 import { formatCm } from '../logic/measure';
 import { newId } from '../model/ids';
-import { BASIC_GROUP, BUILTIN_PRESETS, MY_GROUP } from '../model/presets';
+import { BASIC_GROUP, BUILTIN_PRESETS, DECOR_GROUP, MY_GROUP } from '../model/presets';
 import type { FurniturePreset } from '../model/types';
 import { actions, store, useApp } from '../store';
 import { getViewCenter } from '../view2d/viewApi';
@@ -57,7 +57,7 @@ export function Palette() {
 
   return (
     <aside class="panel palette">
-      {[MY_GROUP, BASIC_GROUP].map((group) => (
+      {[MY_GROUP, DECOR_GROUP, BASIC_GROUP].map((group) => (
         <div key={group}>
           <h3>{group}</h3>
           <div class="preset-list">

@@ -89,6 +89,14 @@ export function PropertiesPanel() {
         <NumberField label="가로" value={f.width} min={1} disabled={readOnly} onCommit={(width) => update({ width })} />
         <NumberField label="세로" value={f.depth} min={1} disabled={readOnly} onCommit={(depth) => update({ depth })} />
         <NumberField label="높이" value={f.height} min={1} disabled={readOnly} onCommit={(height) => update({ height })} />
+        <NumberField
+          label="올림"
+          value={f.elevation ?? 0}
+          min={0}
+          disabled={readOnly}
+          onCommit={(elevation) => update({ elevation })}
+        />
+        <p class="hint">올림: 바닥에서 띄운 높이. 서랍장(67cm) 위 TV라면 67.</p>
       </div>
 
       <div class="field-group">

@@ -222,7 +222,7 @@ export class Scene3D {
         it = { key, group, outline: null, highlight: '' };
         this.items.set(f.id, it);
       }
-      it.group.position.set(f.x, 0, f.y);
+      it.group.position.set(f.x, f.elevation ?? 0, f.y);
       it.group.rotation.y = -THREE.MathUtils.degToRad(f.rotation);
     }
     for (const [id, it] of this.items) {

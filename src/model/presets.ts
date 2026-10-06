@@ -3,6 +3,7 @@ import type { Furniture, FurniturePreset, ShapeKind } from './types';
 
 export const MY_GROUP = '우리 집 가구';
 export const BASIC_GROUP = '기본 가구';
+export const DECOR_GROUP = '소품·인테리어';
 
 const p = (
   id: string,
@@ -28,6 +29,17 @@ export const BUILTIN_PRESETS: readonly FurniturePreset[] = [
   p('my-fridge', '냉장고 (SJ-GD14D)', 'fridge', 48, 60, 112.5, '#f4f4f2', MY_GROUP),
   p('my-microwave', '전자레인지', 'microwave', 48.6, 41.2, 29.6, '#f4f4f2', MY_GROUP),
 
+  // 분위기 소품과 작은 가구 (우드 톤)
+  p('rug-m', '러그 (120×160)', 'rug', 120, 160, 1, '#cdb89c', DECOR_GROUP),
+  p('rug-l', '러그 (140×200)', 'rug', 140, 200, 1, '#cdb89c', DECOR_GROUP),
+  p('plant-l', '큰 화분 (몬스테라 등)', 'plant', 45, 45, 120, '#d9cbb5', DECOR_GROUP),
+  p('plant-s', '작은 화분', 'plant', 28, 28, 55, '#d9cbb5', DECOR_GROUP),
+  p('floor-lamp', '플로어 스탠드', 'floorLamp', 30, 30, 150, '#b8875a', DECOR_GROUP),
+  p('tv-32', 'TV 32인치', 'tv', 73, 18, 47, '#1c1c1c', DECOR_GROUP),
+  p('tv-43', 'TV 43인치', 'tv', 97, 22, 62, '#1c1c1c', DECOR_GROUP),
+  p('sofa-compact', '2인 소파 (컴팩트)', 'sofa', 125, 75, 75, '#d6c7b0', DECOR_GROUP),
+  p('low-table', '로우 테이블 (원목)', 'diningTable', 70, 45, 35, '#c8a27a', DECOR_GROUP),
+  p('wood-side', '원목 사이드 테이블', 'diningTable', 40, 40, 50, '#c8a27a', DECOR_GROUP),
   p('bed-single', '침대 (싱글)', 'bed', 100, 200, 45, '#c9b79c'),
   p('bed-queen', '침대 (퀸)', 'bed', 150, 200, 45, '#c9b79c'),
   p('sofa-2', '소파 (2인)', 'sofa', 160, 85, 80, '#6f8fa8'),
@@ -60,6 +72,10 @@ export const SHAPE_LABELS: Record<ShapeKind, string> = {
   waterServer: '워터서버',
   microwave: '전자레인지',
   fridgeMicrowave: '냉장고 + 전자레인지',
+  rug: '러그',
+  plant: '화분',
+  floorLamp: '플로어 스탠드',
+  tv: 'TV',
 };
 
 export function furnitureFromPreset(

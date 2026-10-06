@@ -20,6 +20,16 @@ const shape = (id: string, poly: Vec2[]): Shape => ({ id, poly, box: pointsAabb(
 const boxesTouch = (a: Aabb, b: Aabb) =>
   a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY;
 
+/** 러그처럼 바닥에 깔려 위에 다른 가구를 놓아도 되는 것 */
+export const isFlat = (f: Pick<Furniture, 'shape'>) => f.shape === 'rug';
+
+/** f가 [y0, y1] 높이 구간과 겹치는지 (서랍장 위에 올린 TV는 서랍장과 겹치지 않는다) */
+function verticalOverlap(f: Furniture, y0: number, y1: number) {
+  const a0 = f.elevation ?? 0;
+  const a1 = a0 + f.height;
+  return Math.min(a1, y1) - Math.max(a0, y0) > TOLERANCE;
+}
+
 /** 사방으로 TOLERANCE만큼 줄인 사각형 */
 function shrunk(r: RectLike): Vec2[] {
   return rectCorners({
@@ -81,15 +91,23 @@ export function createCollisionChecker() {
     const it = shapeOf(f);
     const out: Issue[] = [];
     if (!house.rooms.some((r) => polygonInside(it.poly, r.points))) out.push({ type: 'outOfRoom' });
+    // 러그는 밟고 지나가는 것이라 벽·설비·문과의 겹침을 보지 않는다
+    if (isFlat(f)) {
+      staticIssues.set(f, out);
+      return out;
+    }
     for (const w of walls) {
       if (boxesTouch(it.box, w.box) && convexOverlap(it.poly, w.poly)) {
         out.push({ type: 'wall', otherId: w.id });
         break;
       }
     }
-    for (const fx of fixtures) {
-      if (boxesTouch(it.box, fx.box) && convexOverlap(it.poly, fx.poly)) out.push({ type: 'overlap', otherId: fx.id });
-    }
+    house.fixtures.forEach((fixture, i) => {
+      const fx = fixtures[i];
+      if (verticalOverlap(f, 0, fixture.height) && boxesTouch(it.box, fx.box) && convexOverlap(it.poly, fx.poly)) {
+        out.push({ type: 'overlap', otherId: fx.id });
+      }
+    });
     const doors = new Set<string>();
     for (const z of zones) {
       if (!doors.has(z.id) && boxesTouch(it.box, z.box) && convexOverlap(it.poly, z.poly)) {
@@ -107,7 +125,12 @@ export function createCollisionChecker() {
     if (hit !== undefined) return hit;
     const sa = shapeOf(a);
     const sb = shapeOf(b);
-    const v = boxesTouch(sa.box, sb.box) && convexOverlap(sa.poly, sb.poly);
+    const v =
+      !isFlat(a) &&
+      !isFlat(b) &&
+      verticalOverlap(a, b.elevation ?? 0, (b.elevation ?? 0) + b.height) &&
+      boxesTouch(sa.box, sb.box) &&
+      convexOverlap(sa.poly, sb.poly);
     if (!m) {
       m = new WeakMap();
       pairs.set(a, m);

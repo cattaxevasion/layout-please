@@ -346,6 +346,14 @@ export function Plan2D() {
   const structure = mode === 'structure';
 
   const bounds = useMemo(() => houseBounds(house), [house]);
+  // 그리는 순서: 러그 → 바닥에 놓인 가구 → 다른 가구 위에 올린 물건
+  const drawOrder = useMemo(
+    () =>
+      [...furniture].sort(
+        (a, b) => (a.shape === 'rug' ? -1 : (a.elevation ?? 0)) - (b.shape === 'rug' ? -1 : (b.elevation ?? 0)),
+      ),
+    [furniture],
+  );
   // 가구와 부딪힌 문의 금지 영역을 빨갛게 보여 준다
   const alertZones = useMemo(() => {
     const doorIds = new Set<string>();
@@ -380,7 +388,7 @@ export function Plan2D() {
             {!structure &&
               alertZones.map((z, i) => <polygon key={i} points={ptsAttr(z)} class="door-zone-alert" />)}
             <g class="furniture-layer">
-              {furniture.map((f) => (
+              {drawOrder.map((f) => (
                 <FurnitureItem
                   key={f.id}
                   f={f}

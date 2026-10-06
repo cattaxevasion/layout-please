@@ -73,6 +73,42 @@ export function FurnitureGlyph({ f, fill, stroke, strokeWidth }: Props) {
           <line x1={x0 + 2} y1={-y0 - 3} x2={-x0 - 2} y2={-y0 - 3} {...line} />
         </>
       );
+    case 'rug':
+      return (
+        <>
+          <rect x={x0} y={y0} width={w} height={d} fill={fill} fill-opacity={0.55} {...line} />
+          <rect x={x0 + 4} y={y0 + 4} width={w - 8} height={d - 8} fill="none" {...line} stroke-dasharray="5 4" stroke-opacity={0.5} />
+        </>
+      );
+    case 'plant': {
+      const r = Math.min(w, d) / 2;
+      return (
+        <>
+          <rect x={x0} y={y0} width={w} height={d} fill="transparent" stroke="none" />
+          <circle cx={0} cy={0} r={r} fill="#6f9160" {...line} />
+          <circle cx={-r * 0.3} cy={-r * 0.2} r={r * 0.45} fill="#86a676" stroke="none" />
+          <circle cx={r * 0.25} cy={r * 0.25} r={r * 0.35} fill="#5b7d4d" stroke="none" />
+        </>
+      );
+    }
+    case 'floorLamp': {
+      const r = Math.min(w, d) / 2;
+      return (
+        <>
+          <rect x={x0} y={y0} width={w} height={d} fill="transparent" stroke="none" />
+          <circle cx={0} cy={0} r={r} fill="#f6ecd6" {...line} />
+          <circle cx={0} cy={0} r={r * 0.25} fill={fill} stroke="none" />
+        </>
+      );
+    }
+    case 'tv':
+      return (
+        <>
+          <rect x={x0} y={y0} width={w} height={d} fill="transparent" stroke="none" />
+          <rect x={x0} y={-2} width={w} height={4} fill="#1c1c1c" {...line} />
+          <rect x={-w * 0.2} y={y0} width={w * 0.4} height={d} fill="none" {...line} stroke-opacity={0.4} />
+        </>
+      );
     case 'officeChair': {
       // 별 모양 다리 바닥 원 + 좌판 + 등받이
       const r = Math.min(w, d) / 2;

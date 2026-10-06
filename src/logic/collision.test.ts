@@ -157,3 +157,27 @@ describe('캐시하는 검사기', () => {
     expect(check(h, list).size).toBe(0);
   });
 });
+
+describe('러그와 올려놓기', () => {
+  it('러그 위 가구, 러그끼리, 문 앞 러그는 충돌이 아니다', () => {
+    // 러그는 문이 열리는 자리(y 0~80)까지 덮고, 가구는 러그 위 문 영역 밖에
+    const rug = { ...f('rug', 150, 100, 120, 160), shape: 'rug' as const, height: 1 };
+    const rug2 = { ...f('rug2', 160, 110, 60, 60), shape: 'rug' as const, height: 1 };
+    const r = checkLayout(testHouse(), [rug, rug2, f('a', 150, 150)]);
+    expect(r.size).toBe(0);
+  });
+
+  it('러그도 방 밖으로 나가면 경고', () => {
+    const rug = { ...f('rug', 300, 100, 120, 100), shape: 'rug' as const, height: 1 };
+    expect(checkLayout(testHouse(), [rug]).get('rug')).toEqual([{ type: 'outOfRoom' }]);
+  });
+
+  it('서랍장 위에 올린 TV는 서랍장과 겹치지 않는다', () => {
+    const drawers = { ...f('drawers', 150, 170), height: 67 };
+    const tv = { ...f('tv', 150, 170, 40, 15), height: 47, elevation: 67 };
+    expect(checkLayout(testHouse(), [drawers, tv]).size).toBe(0);
+    // 높이를 덜 올리면 겹친다
+    const low = { ...tv, elevation: 30 };
+    expect(checkLayout(testHouse(), [drawers, low]).get('tv')).toEqual([{ type: 'overlap', otherId: 'drawers' }]);
+  });
+});
