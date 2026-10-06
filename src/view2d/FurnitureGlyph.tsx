@@ -69,6 +69,55 @@ export function FurnitureGlyph({ f, fill, stroke, strokeWidth }: Props) {
           <line x1={x0 + 2} y1={-y0 - 3} x2={-x0 - 2} y2={-y0 - 3} {...line} />
         </>
       );
+    case 'officeChair': {
+      // 별 모양 다리 바닥 원 + 좌판 + 등받이
+      const r = Math.min(w, d) / 2;
+      return (
+        <>
+          <rect x={x0} y={y0} width={w} height={d} fill="transparent" stroke="none" />
+          <circle cx={0} cy={0} r={r} fill="none" {...line} stroke-dasharray="3 3" />
+          <rect x={-w * 0.38} y={-d * 0.3} width={w * 0.76} height={d * 0.7} rx={6} fill={fill} {...line} />
+          <rect x={-w * 0.36} y={-d * 0.42} width={w * 0.72} height={d * 0.1} rx={2} {...detail} />
+        </>
+      );
+    }
+    case 'standingDesk': {
+      const lx = w / 2 - Math.min(18, w * 0.15);
+      return (
+        <>
+          {base}
+          {[-1, 1].map((s) => (
+            <line key={s} x1={s * lx} y1={y0 + 3} x2={s * lx} y2={-y0 - 3} {...line} stroke-dasharray="4 3" />
+          ))}
+        </>
+      );
+    }
+    case 'drawers':
+      return (
+        <>
+          {base}
+          <line x1={x0 + 2} y1={-y0 - 3} x2={-x0 - 2} y2={-y0 - 3} {...line} />
+          <circle cx={0} cy={-y0 - 1.5} r={1.8} fill="#4a4a4a" />
+        </>
+      );
+    case 'metalShelf': {
+      const t = 4;
+      return (
+        <>
+          {base}
+          {[
+            [x0, y0],
+            [-x0 - t, y0],
+            [x0, -y0 - t],
+            [-x0 - t, -y0 - t],
+          ].map(([px, py], i) => (
+            <rect key={i} x={px} y={py} width={t} height={t} fill="#000" />
+          ))}
+          <line x1={x0 + t} y1={y0 + t} x2={-x0 - t} y2={-y0 - t} {...line} stroke-opacity={0.3} />
+          <line x1={-x0 - t} y1={y0 + t} x2={x0 + t} y2={-y0 - t} {...line} stroke-opacity={0.3} />
+        </>
+      );
+    }
     case 'box':
       return (
         <>

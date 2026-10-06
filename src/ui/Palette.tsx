@@ -3,7 +3,7 @@
 import { useState } from 'preact/hooks';
 import { formatCm } from '../logic/measure';
 import { newId } from '../model/ids';
-import { BUILTIN_PRESETS } from '../model/presets';
+import { BASIC_GROUP, BUILTIN_PRESETS, MY_GROUP } from '../model/presets';
 import type { FurniturePreset } from '../model/types';
 import { actions, store, useApp } from '../store';
 import { getViewCenter } from '../view2d/viewApi';
@@ -57,12 +57,16 @@ export function Palette() {
 
   return (
     <aside class="panel palette">
-      <h3>가구 추가</h3>
-      <div class="preset-list">
-        {BUILTIN_PRESETS.map((p) => (
-          <PresetButton key={p.id} p={p} />
-        ))}
-      </div>
+      {[MY_GROUP, BASIC_GROUP].map((group) => (
+        <div key={group}>
+          <h3>{group}</h3>
+          <div class="preset-list">
+            {BUILTIN_PRESETS.filter((p) => (p.group ?? BASIC_GROUP) === group).map((p) => (
+              <PresetButton key={p.id} p={p} />
+            ))}
+          </div>
+        </div>
+      ))}
 
       <h3>내 프리셋</h3>
       {userPresets.length === 0 ? (

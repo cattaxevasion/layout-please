@@ -108,7 +108,11 @@ export type ShapeKind =
   | 'storage'
   | 'diningTable'
   | 'tvStand'
-  | 'bookshelf';
+  | 'bookshelf'
+  | 'standingDesk'
+  | 'officeChair'
+  | 'drawers'
+  | 'metalShelf';
 
 export interface Furniture {
   id: Id;
@@ -140,6 +144,8 @@ export interface FurniturePreset {
   height: number;
   color: string;
   builtin: boolean;
+  /** 가구 목록에서 묶어 보여 줄 이름 */
+  group?: string;
 }
 
 /** 배치안 (A안, B안 …) */

@@ -46,6 +46,29 @@ function box(parent: THREE.Object3D, mat: THREE.Material, w: number, h: number, 
   return m;
 }
 
+/** 짙은 금속·손잡이용 재질 (가구 색과 상관없이) */
+const METAL = new THREE.MeshStandardMaterial({ color: '#3c3d3f', roughness: 0.45, metalness: 0.4 });
+const KNOB = new THREE.MeshStandardMaterial({ color: '#4a4a4a', roughness: 0.5 });
+
+/** 바닥 기준 원기둥 (반지름 r, 높이 h) */
+function cylinder(parent: THREE.Object3D, mat: THREE.Material, r: number, h: number, x: number, y0: number, z: number) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16), mat);
+  m.position.set(x, y0 + h / 2, z);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+
+/** 두 점을 잇는 가는 막대 (보강대 등). 점은 그룹 로컬 좌표 */
+function bar(parent: THREE.Object3D, mat: THREE.Material, a: THREE.Vector3, b: THREE.Vector3, t: number) {
+  const len = a.distanceTo(b);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(t, len, t), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  m.castShadow = true;
+  parent.add(m);
+}
+
 function legs(g: THREE.Group, mat: THREE.Material, W: number, D: number, h: number, size: number, inset: number) {
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
@@ -123,6 +146,92 @@ const builders: Record<ShapeKind, (g: THREE.Group, W: number, D: number, H: numb
     const n = Math.max(1, Math.floor(H / 35));
     for (let i = 1; i < n; i++) box(g, p.main, W - t * 2, t, D - 1, 0, (H / n) * i, 0.5);
   },
+
+  // 상판 + T자 다리 두 개 (가로 막대 받침, 기둥, 상판 아래 보)
+  standingDesk(g, W, D, H, p) {
+    const top = 2.5;
+    box(g, p.main, W, top, D, 0, H - top, 0);
+    const lx = W / 2 - Math.min(18, W * 0.15);
+    for (const s of [-1, 1]) {
+      box(g, METAL, 6, 3, D - 6, s * lx, 0, 0); // 바닥 받침
+      box(g, METAL, 7, H - top - 3, 5, s * lx, 3, 0); // 기둥
+      box(g, METAL, 5, 4, D - 14, s * lx, H - top - 4, 0); // 상판 아래 받침
+    }
+    box(g, METAL, lx * 2, 5, 5, 0, H - top - 6, -D * 0.15); // 두 다리를 잇는 보
+  },
+
+  // 별 모양 다리 다섯 개 + 바퀴 + 가스 실린더 + 좌판 + 높은 메쉬 등받이 + 머리받침 + 팔걸이
+  officeChair(g, W, D, H, p) {
+    const r = Math.min(W, D) / 2 - 3;
+    const seatH = Math.min(47, H * 0.38);
+    const seatW = Math.min(51.5, W * 0.77);
+    const seatD = Math.min(47, D * 0.7);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const leg = new THREE.Group();
+      box(leg, p.dark, r, 4, 5, r / 2, 6, 0);
+      box(leg, KNOB, 5, 6, 5, r - 2, 0, 0); // 바퀴
+      leg.rotation.y = a;
+      g.add(leg);
+    }
+    cylinder(g, METAL, 2.5, seatH - 12, 0, 8, 0);
+    box(g, p.dark, seatW * 0.5, 4, seatD * 0.5, 0, seatH - 10, 0); // 좌판 아래 기구
+    box(g, p.main, seatW, 6, seatD, 0, seatH - 6, 3);
+    const backH = Math.min(58.5, H - seatH - 18);
+    const back = new THREE.Group();
+    box(back, p.main, seatW * 0.95, backH, 4, 0, 0, 0);
+    box(back, p.main, seatW * 0.72, 14, 4, 0, backH + 3, 0); // 머리받침
+    back.position.set(0, seatH + 2, -seatD / 2 - 1);
+    back.rotation.x = -0.12; // 뒤로 살짝 젖힘
+    g.add(back);
+    for (const s of [-1, 1]) {
+      const ax = s * (seatW / 2 + 4);
+      box(g, p.dark, 4, 20, 6, ax, seatH - 2, -2);
+      box(g, p.main, 8, 3, 26, ax, seatH + 18, 0);
+    }
+  },
+
+  // 서랍 3칸 + 손잡이 + 아래 받침
+  drawers(g, W, D, H, p) {
+    const plinth = Math.min(8, H * 0.12);
+    box(g, p.main, W, H, D - 1, 0, 0, -0.5);
+    box(g, p.dark, W - 6, plinth - 1, 1, 0, 0, D / 2 - 1.5); // 들어간 받침 그림자
+    const n = 3;
+    const fh = (H - plinth - 2) / n;
+    for (let i = 0; i < n; i++) {
+      const y0 = plinth + i * fh + 0.4;
+      box(g, p.light, W - 4, fh - 0.8, 1.5, 0, y0, D / 2 - 0.25);
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 2.5, 16), KNOB);
+      knob.rotation.x = Math.PI / 2;
+      knob.position.set(0, y0 + fh / 2, D / 2 + 1.5);
+      knob.castShadow = true;
+      g.add(knob);
+    }
+  },
+
+  // 모서리 기둥 4개 + 선반 3단 + 뒤·옆 X자 보강대
+  metalShelf(g, W, D, H, p) {
+    const post = 4;
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) box(g, p.main, post, H, post, sx * (W / 2 - post / 2), 0, sz * (D / 2 - post / 2));
+    }
+    const levels = [Math.min(18, H * 0.16), H * 0.5, H - 3];
+    for (const y of levels) box(g, p.main, W - 1, 3, D - 1, 0, y, 0);
+    const bx = W / 2 - post;
+    const bz = D / 2 - post;
+    const back = -D / 2 + 1;
+    for (let i = 0; i < 2; i++) {
+      const y0 = levels[i] + 3;
+      const y1 = levels[i + 1];
+      bar(g, p.main, new THREE.Vector3(-bx, y0, back), new THREE.Vector3(bx, y1, back), 1.5);
+      bar(g, p.main, new THREE.Vector3(bx, y0, back), new THREE.Vector3(-bx, y1, back), 1.5);
+      for (const s of [-1, 1]) {
+        const x = s * (W / 2 - 1);
+        bar(g, p.main, new THREE.Vector3(x, y0, -bz), new THREE.Vector3(x, y1, bz), 1.5);
+        bar(g, p.main, new THREE.Vector3(x, y0, bz), new THREE.Vector3(x, y1, -bz), 1.5);
+      }
+    }
+  },
 };
 
 /** 가구 하나의 3D 그룹 (위치·회전은 바깥에서 지정) */
@@ -130,6 +239,16 @@ export function buildFurniture(f: Pick<Furniture, 'shape' | 'width' | 'depth' | 
   const g = new THREE.Group();
   const build = builders[f.shape] ?? builders.box;
   build(g, f.width, f.depth, f.height, palette(f.color));
+  // 공용 재질(금속, 손잡이)은 가구마다 복제한다: 충돌 표시로 한 가구만 빨갛게 칠할 수 있도록
+  const clones = new Map<THREE.Material, THREE.Material>();
+  g.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    const m = mesh.material as THREE.Material | undefined;
+    if (m === METAL || m === KNOB) {
+      if (!clones.has(m)) clones.set(m, m.clone());
+      mesh.material = clones.get(m)!;
+    }
+  });
   return g;
 }
 
@@ -141,8 +260,9 @@ export const furnitureShapeKey = (f: Pick<Furniture, 'shape' | 'width' | 'depth'
 export function disposeGroup(g: THREE.Object3D) {
   g.traverse((o) => {
     const m = (o as THREE.Mesh).material;
-    if (Array.isArray(m)) m.forEach((x) => x.dispose());
-    else if (m) m.dispose();
+    const keep = (x: THREE.Material) => x === METAL || x === KNOB;
+    if (Array.isArray(m)) m.forEach((x) => !keep(x) && x.dispose());
+    else if (m && !keep(m)) m.dispose();
     const geom = (o as THREE.Mesh).geometry;
     if (geom && !shared.has(geom)) geom.dispose();
   });

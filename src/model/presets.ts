@@ -1,6 +1,9 @@
 import { newId } from './ids';
 import type { Furniture, FurniturePreset, ShapeKind } from './types';
 
+export const MY_GROUP = '우리 집 가구';
+export const BASIC_GROUP = '기본 가구';
+
 const p = (
   id: string,
   name: string,
@@ -9,9 +12,17 @@ const p = (
   depth: number,
   height: number,
   color: string,
-): FurniturePreset => ({ id, name, shape, width, depth, height, color, builtin: true });
+  group = BASIC_GROUP,
+): FurniturePreset => ({ id, name, shape, width, depth, height, color, builtin: true, group });
 
 export const BUILTIN_PRESETS: readonly FurniturePreset[] = [
+  // 실제로 가진 가구 (제품 치수 기준)
+  p('my-desk', '스탠딩 책상', 'standingDesk', 120, 70, 72, '#f1efea', MY_GROUP),
+  p('my-chair', '메쉬 의자', 'officeChair', 67, 67, 125, '#8f989d', MY_GROUP),
+  p('my-drawers', '3단 서랍장', 'drawers', 69, 38, 67, '#ddd6c3', MY_GROUP),
+  p('my-side-table', '사이드 테이블', 'bookshelf', 39, 30, 67, '#ddd6c3', MY_GROUP),
+  p('my-metal-shelf', '수납 선반 (검정)', 'metalShelf', 85, 55, 110, '#2b2b2b', MY_GROUP),
+
   p('bed-single', '침대 (싱글)', 'bed', 100, 200, 45, '#c9b79c'),
   p('bed-queen', '침대 (퀸)', 'bed', 150, 200, 45, '#c9b79c'),
   p('sofa-2', '소파 (2인)', 'sofa', 160, 85, 80, '#6f8fa8'),
@@ -36,6 +47,10 @@ export const SHAPE_LABELS: Record<ShapeKind, string> = {
   diningTable: '식탁',
   tvStand: 'TV대',
   bookshelf: '책장',
+  standingDesk: '스탠딩 책상',
+  officeChair: '사무용 의자',
+  drawers: '서랍장',
+  metalShelf: '금속 선반',
 };
 
 export function furnitureFromPreset(

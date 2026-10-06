@@ -741,3 +741,6 @@ button.badge.warn {
     min-width: 40px;
   }
 }
+.palette > div + div > h3 {
+  margin-top: 20px;
+}

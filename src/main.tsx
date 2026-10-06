@@ -59,6 +59,9 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// 개발 중 콘솔에서 상태를 들여다보고 조작할 수 있게
+if (import.meta.env.DEV) Object.assign(window, { __store: store, __actions: actions });
+
 // 같은 탭에서 다른 공유 링크를 열면 새로 불러온다
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#s=')) location.reload();
