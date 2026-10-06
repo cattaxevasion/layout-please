@@ -15,7 +15,7 @@ const VIEWS: [UiState['view'], string][] = [
   ['3d', '3D'],
 ];
 
-export function Toolbar() {
+export function Toolbar({ mobile }: { mobile: boolean }) {
   const canUndo = useApp(selectCanUndo);
   const canRedo = useApp(selectCanRedo);
   const view = useApp((s) => s.ui.view);
@@ -26,7 +26,7 @@ export function Toolbar() {
   return (
     <header class="toolbar">
       <strong class="app-title">가구 배치</strong>
-      {!readOnly && (
+      {!readOnly && !mobile && (
         <div class="toolbar-group segmented-inline mode-switch">
           <button class={mode === 'arrange' ? 'active' : ''} onClick={() => actions.setMode('arrange')}>
             배치
@@ -40,7 +40,7 @@ export function Toolbar() {
       {mode === 'arrange' && <ProblemBadge />}
       {!readOnly && (
         <>
-          <div class="toolbar-group">
+          <div class="toolbar-group undo-group">
             <button onClick={actions.undo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">
               ↶<span class="label-text"> 되돌리기</span>
             </button>
@@ -83,8 +83,12 @@ export function Toolbar() {
         </>
       )}
       <div class="toolbar-group segmented-inline view-switch">
-        {VIEWS.map(([v, label]) => (
-          <button key={v} class={view === v ? 'active' : ''} onClick={() => actions.setView(v)}>
+        {VIEWS.filter(([v]) => !mobile || v !== 'split').map(([v, label]) => (
+          <button
+            key={v}
+            class={view === v || (mobile && view === 'split' && v === '2d') ? 'active' : ''}
+            onClick={() => actions.setView(v)}
+          >
             {label}
           </button>
         ))}

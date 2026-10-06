@@ -6,6 +6,10 @@ import preact from '@preact/preset-vite';
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/layout-please/',
   plugins: [preact()],
+  build: {
+    // three.js 묶음(3D 뷰를 열 때만 불러옴)이 500kB를 조금 넘는다
+    chunkSizeWarningLimit: 800,
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

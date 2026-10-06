@@ -17,8 +17,9 @@ import { buildHouse, disposeHouse, type HouseObjects } from './houseMesh';
 interface FurnitureObject {
   key: string;
   group: THREE.Group;
-  height: number;
   outline: THREE.LineSegments | null;
+  /** 마지막으로 적용한 강조 상태 (바뀐 가구만 다시 칠하기 위해) */
+  highlight: string;
 }
 
 const ACCENT = new THREE.Color('#2f6fde');
@@ -212,7 +213,7 @@ export class Scene3D {
         const group = buildFurniture(f);
         group.userData.fid = f.id;
         this.furnitureRoot.add(group);
-        it = { key, group, height: f.height, outline: null };
+        it = { key, group, outline: null, highlight: '' };
         this.items.set(f.id, it);
       }
       it.group.position.set(f.x, 0, f.y);
@@ -237,6 +238,10 @@ export class Scene3D {
       const it = this.items.get(f.id);
       if (!it) continue;
       const problem = collisions.has(f.id);
+      const selected = selectedId === f.id;
+      const state = `${problem}|${selected}|${it.key}`;
+      if (state === it.highlight) continue;
+      it.highlight = state;
       it.group.traverse((o) => {
         const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
         if (m && 'emissive' in m && o !== it.outline) {
@@ -244,7 +249,7 @@ export class Scene3D {
           m.emissiveIntensity = problem ? 0.55 : 0;
         }
       });
-      const wantOutline = selectedId === f.id || problem;
+      const wantOutline = selected || problem;
       if (it.outline) {
         it.group.remove(it.outline);
         it.outline.geometry.dispose();
@@ -255,7 +260,7 @@ export class Scene3D {
         const g = new THREE.EdgesGeometry(new THREE.BoxGeometry(f.width + 2, f.height + 2, f.depth + 2));
         const line = new THREE.LineSegments(
           g,
-          new THREE.LineBasicMaterial({ color: selectedId === f.id ? ACCENT : DANGER, depthTest: false, transparent: true }),
+          new THREE.LineBasicMaterial({ color: selected ? ACCENT : DANGER, depthTest: false, transparent: true }),
         );
         line.position.y = f.height / 2;
         line.renderOrder = 10;

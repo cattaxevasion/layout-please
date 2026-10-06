@@ -1,6 +1,7 @@
 // 2D 평면도 (SVG). 좌표 단위는 cm 그대로 쓰고, 화면 이동·확대는 viewBox로만 처리한다.
 // 배치 모드에서는 가구만, 구조 편집 모드에서는 방·벽·문·창·설비만 조작할 수 있다.
 
+import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { type Segment } from '../geometry/obb';
 import { dot, sub } from '../geometry/vec';
@@ -190,7 +191,11 @@ export function Plan2D() {
   function onPointerDown(e: PointerEvent) {
     if (!camRef.current) return;
     if (e.button !== 0 && e.button !== 1) return;
-    svgRef.current!.setPointerCapture(e.pointerId);
+    try {
+      svgRef.current!.setPointerCapture(e.pointerId);
+    } catch {
+      /* 이미 끝난 포인터 등: 캡처 없이도 동작한다 */
+    }
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointers.current.size === 2) {
@@ -427,7 +432,16 @@ export function Plan2D() {
   );
 }
 
-function FurnitureItem({ f, selected, problem }: { f: Furniture; selected: boolean; problem: boolean }) {
+// 끌고 있는 가구만 다시 그려지도록
+const FurnitureItem = memo(function FurnitureItem({
+  f,
+  selected,
+  problem,
+}: {
+  f: Furniture;
+  selected: boolean;
+  problem: boolean;
+}) {
   return (
     <g
       data-fid={f.id}
@@ -456,4 +470,4 @@ function FurnitureItem({ f, selected, problem }: { f: Furniture; selected: boole
       )}
     </g>
   );
-}
+});

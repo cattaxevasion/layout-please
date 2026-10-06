@@ -51,44 +51,104 @@ export function doorZoneShapes(house: House): Shape[] {
   return out;
 }
 
-export function checkLayout(house: House, furniture: readonly Furniture[]): CollisionMap {
-  const result: CollisionMap = new Map();
-  const add = (id: string, issue: Issue) => {
-    const list = result.get(id);
-    if (list) {
-      if (!list.some((x) => x.type === issue.type && x.otherId === issue.otherId)) list.push(issue);
-    } else result.set(id, [issue]);
+/**
+ * 결과를 재사용하는 충돌 검사기. 가구 객체는 바뀔 때마다 새로 만들어지므로(불변),
+ * 같은 객체끼리의 판정은 캐시해 두고 드래그 중에는 움직인 가구와 관련된 것만 다시 계산한다.
+ */
+export function createCollisionChecker() {
+  let houseRef: House | null = null;
+  let walls: Shape[] = [];
+  let zones: Shape[] = [];
+  let fixtures: Shape[] = [];
+  let shapes = new WeakMap<Furniture, Shape>();
+  /** 집 구조에 대한 판정 (방 밖, 벽, 설비, 문) */
+  let staticIssues = new WeakMap<Furniture, Issue[]>();
+  /** 가구 쌍 겹침 */
+  let pairs = new WeakMap<Furniture, WeakMap<Furniture, boolean>>();
+
+  const shapeOf = (f: Furniture) => {
+    let s = shapes.get(f);
+    if (!s) {
+      s = shape(f.id, shrunk(f));
+      shapes.set(f, s);
+    }
+    return s;
   };
 
-  const items = furniture.map((f) => shape(f.id, shrunk(f)));
-  const fixtures = house.fixtures.map((f) => shape(f.id, rectCorners(f)));
-  const walls = solidWallShapes(house);
-  const zones = doorZoneShapes(house);
-
-  items.forEach((it, i) => {
-    if (!house.rooms.some((r) => polygonInside(it.poly, r.points))) add(it.id, { type: 'outOfRoom' });
-
+  function houseIssues(f: Furniture, house: House): Issue[] {
+    const cached = staticIssues.get(f);
+    if (cached) return cached;
+    const it = shapeOf(f);
+    const out: Issue[] = [];
+    if (!house.rooms.some((r) => polygonInside(it.poly, r.points))) out.push({ type: 'outOfRoom' });
     for (const w of walls) {
       if (boxesTouch(it.box, w.box) && convexOverlap(it.poly, w.poly)) {
-        add(it.id, { type: 'wall', otherId: w.id });
+        out.push({ type: 'wall', otherId: w.id });
         break;
       }
     }
     for (const fx of fixtures) {
-      if (boxesTouch(it.box, fx.box) && convexOverlap(it.poly, fx.poly)) add(it.id, { type: 'overlap', otherId: fx.id });
+      if (boxesTouch(it.box, fx.box) && convexOverlap(it.poly, fx.poly)) out.push({ type: 'overlap', otherId: fx.id });
     }
-    for (let j = i + 1; j < items.length; j++) {
-      const other = items[j];
-      if (boxesTouch(it.box, other.box) && convexOverlap(it.poly, other.poly)) {
-        add(it.id, { type: 'overlap', otherId: other.id });
-        add(other.id, { type: 'overlap', otherId: it.id });
+    const doors = new Set<string>();
+    for (const z of zones) {
+      if (!doors.has(z.id) && boxesTouch(it.box, z.box) && convexOverlap(it.poly, z.poly)) {
+        doors.add(z.id);
+        out.push({ type: 'doorSwing', otherId: z.id });
       }
     }
-    for (const z of zones) {
-      if (boxesTouch(it.box, z.box) && convexOverlap(it.poly, z.poly)) add(it.id, { type: 'doorSwing', otherId: z.id });
+    staticIssues.set(f, out);
+    return out;
+  }
+
+  function overlaps(a: Furniture, b: Furniture): boolean {
+    let m = pairs.get(a);
+    const hit = m?.get(b);
+    if (hit !== undefined) return hit;
+    const sa = shapeOf(a);
+    const sb = shapeOf(b);
+    const v = boxesTouch(sa.box, sb.box) && convexOverlap(sa.poly, sb.poly);
+    if (!m) {
+      m = new WeakMap();
+      pairs.set(a, m);
     }
-  });
-  return result;
+    m.set(b, v);
+    return v;
+  }
+
+  return function check(house: House, furniture: readonly Furniture[]): CollisionMap {
+    if (house !== houseRef) {
+      houseRef = house;
+      walls = solidWallShapes(house);
+      zones = doorZoneShapes(house);
+      fixtures = house.fixtures.map((f) => shape(f.id, rectCorners(f)));
+      staticIssues = new WeakMap();
+      shapes = new WeakMap();
+      pairs = new WeakMap();
+    }
+    const result: CollisionMap = new Map();
+    const add = (id: string, issue: Issue) => {
+      const list = result.get(id);
+      if (list) list.push(issue);
+      else result.set(id, [issue]);
+    };
+    furniture.forEach((f, i) => {
+      for (const issue of houseIssues(f, house)) add(f.id, issue);
+      for (let j = i + 1; j < furniture.length; j++) {
+        const g = furniture[j];
+        if (overlaps(f, g)) {
+          add(f.id, { type: 'overlap', otherId: g.id });
+          add(g.id, { type: 'overlap', otherId: f.id });
+        }
+      }
+    });
+    return result;
+  };
+}
+
+/** 한 번만 검사할 때 (캐시 없이) */
+export function checkLayout(house: House, furniture: readonly Furniture[]): CollisionMap {
+  return createCollisionChecker()(house, furniture);
 }
 
 /** 경고 문구 (UI용) */

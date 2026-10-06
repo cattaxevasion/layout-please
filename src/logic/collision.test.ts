@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { convexOverlap, pointInPolygon, polygonInside } from '../geometry/sat';
 import { rectCorners } from '../geometry/obb';
 import type { Door, Furniture, House } from '../model/types';
-import { checkLayout } from './collision';
+import { checkLayout, createCollisionChecker } from './collision';
 import { solidIntervals } from './openings';
 import { wallsFromRoom } from './walls';
 
@@ -139,5 +139,21 @@ describe('checkLayout', () => {
     const h = testHouse();
     h.fixtures.push({ id: 'x1', name: '싱크대', x: 250, y: 150, width: 60, depth: 60, height: 85, rotation: 0, color: '#ccc' });
     expect(checkLayout(h, [f('a', 230, 150)]).get('a')).toEqual([{ type: 'overlap', otherId: 'x1' }]);
+  });
+});
+
+describe('캐시하는 검사기', () => {
+  it('움직인 가구만 다시 계산해도 결과는 처음부터 계산한 것과 같다', () => {
+    const h = testHouse();
+    const check = createCollisionChecker();
+    let list = [f('a', 50, 150), f('b', 150, 150), f('c', 250, 150)];
+    expect(check(h, list).size).toBe(0);
+    // b를 a 쪽으로 옮겨 겹치게
+    list = [list[0], { ...list[1], x: 80 }, list[2]];
+    expect(check(h, list)).toEqual(checkLayout(h, list));
+    expect(check(h, list).get('a')).toEqual([{ type: 'overlap', otherId: 'b' }]);
+    // 다시 떼어 놓기
+    list = [list[0], { ...list[1], x: 150 }, list[2]];
+    expect(check(h, list).size).toBe(0);
   });
 });

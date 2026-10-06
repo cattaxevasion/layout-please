@@ -676,3 +676,68 @@ button.badge.warn {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   cursor: pointer;
 }
+
+/* ───────── 모바일 (열람 위주) ───────── */
+
+.app {
+  height: 100dvh;
+}
+
+.mobile .toolbar {
+  gap: 6px 8px;
+  padding: 6px 8px;
+}
+.mobile .app-title,
+.mobile .toolbar .snap,
+.mobile .label-text,
+.mobile .layout-tabs button {
+  display: none;
+}
+.mobile .layout-tabs select {
+  max-width: 40vw;
+}
+.mobile .badge {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.mobile .share-banner {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+.mobile .share-banner-actions {
+  margin-left: 0;
+}
+.mobile .view3d {
+  border-left: none;
+}
+
+.mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+}
+.mobile-bar-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 손가락으로 누르기 쉽게 */
+@media (pointer: coarse) {
+  button,
+  select {
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+  .plan-tools button,
+  .view3d-tools button {
+    min-width: 40px;
+  }
+}

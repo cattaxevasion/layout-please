@@ -1,6 +1,7 @@
 // 집 구조(방, 벽, 문, 창, 붙박이 설비)와 공용 도형 컴포넌트.
 // data-hit / data-id 속성은 구조 편집 모드의 클릭 판정에 쓴다.
 
+import { memo } from 'preact/compat';
 import { signedArea } from '../geometry/polygon';
 import { add, scale } from '../geometry/vec';
 import { doorSwing, openingPolygon, openingSpan, wallFrame, wallPolygon } from '../logic/openings';
@@ -10,7 +11,16 @@ export const ptsAttr = (pts: readonly Vec2[]) => pts.map((p) => `${p.x},${p.y}`)
 
 const isSel = (sel: Selection | null, kind: Selection['kind'], id: string) => sel?.kind === kind && sel.id === id;
 
-export function HouseShapes({ house, px, selection }: { house: House; px: number; selection: Selection | null }) {
+// 가구를 끄는 동안에는 집 구조가 그대로이므로 다시 그리지 않는다
+export const HouseShapes = memo(function HouseShapes({
+  house,
+  px,
+  selection,
+}: {
+  house: House;
+  px: number;
+  selection: Selection | null;
+}) {
   const walls = new Map(house.walls.map((w) => [w.id, w]));
   return (
     <>
@@ -67,7 +77,7 @@ export function HouseShapes({ house, px, selection }: { house: House; px: number
       ))}
     </>
   );
-}
+});
 
 function RoomLabel({ room, px }: { room: Room; px: number }) {
   const c = polygonCentroid(room.points);
@@ -181,7 +191,7 @@ export function DimText({ x, y, px, text }: { x: number; y: number; px: number; 
 }
 
 /** 그리드: 화면에서 너무 촘촘하지 않은 간격을 고르고, 1m마다 진한 선 */
-export function Grid({
+export const Grid = memo(function Grid({
   bounds,
   s,
   gridSize,
@@ -211,5 +221,5 @@ export function Grid({
       <rect x={x} y={y} width={w} height={h} fill={minor < 100 ? 'url(#grid-major)' : 'url(#grid-minor)'} />
     </>
   );
-}
+});
 
