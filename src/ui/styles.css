@@ -361,14 +361,6 @@ kbd {
   pointer-events: none;
 }
 
-.view3d-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  border-left: 1px solid var(--line);
-  background: #eceae5;
-}
 
 /* ───────── 구조 편집 ───────── */
 
@@ -520,4 +512,57 @@ button.badge.warn {
   background: #fdecea;
   border-color: #f3c2bc;
   font-weight: 600;
+}
+
+/* ───────── 3D ───────── */
+
+.view3d {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #e9e6e0;
+  border-left: 1px solid var(--line);
+  overflow: hidden;
+}
+.view3d-canvas {
+  position: absolute;
+  inset: 0;
+}
+.view3d-canvas canvas {
+  display: block;
+}
+.view3d-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.view3d-tools {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.view3d-tools button {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.segmented-inline {
+  display: flex;
+}
+.segmented-inline button {
+  border-radius: 0;
+}
+.segmented-inline button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.segmented-inline button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+.segmented-inline button + button {
+  margin-left: -1px;
 }

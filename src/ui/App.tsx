@@ -1,5 +1,6 @@
 import { useApp } from '../store';
 import { Plan2D } from '../view2d/Plan2D';
+import { View3D } from '../view3d/View3D';
 import { Palette } from './Palette';
 import { PropertiesPanel } from './PropertiesPanel';
 import { StructurePanel, StructureTools } from './StructurePanel';
@@ -15,11 +16,7 @@ export function App() {
         {structure ? <StructureTools /> : <Palette />}
         <main class={`views views-${view}`}>
           {view !== '3d' && <Plan2D />}
-          {view !== '2d' && (
-            <div class="view3d-placeholder">
-              <p>3D 뷰는 (e) 단계에서 추가됩니다.</p>
-            </div>
-          )}
+          {view !== '2d' && <View3D />}
         </main>
         {structure ? <StructurePanel /> : <PropertiesPanel />}
       </div>
