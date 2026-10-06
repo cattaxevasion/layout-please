@@ -26,6 +26,7 @@ const PASSAGE_WALL = 17; // 통로–양실 사이 벽
 const WASHROOM_WALL_LEN = 73.5; // 통로 쪽 세면실 벽 (나머지가 문)
 const DOOR_W = 68.5; // 미닫이 문 폭
 const CEILING = 250;
+const FRIDGE = { w: 48.6, d: 60, h: 142.1 }; // 냉장고 + 위에 올린 전자레인지
 
 // ── 파생값 ──
 // LDK 가로는 365로 쟀지만 아래쪽 실측 합(144+17+211)이 372이고, 372일 때 카운터 깊이가
@@ -162,14 +163,21 @@ export function createSampleHouse(): House {
         rotation: 270,
         color: '#d9d9d9',
       },
+      // 샤프 SJ-GD14D 냉장고(48×60×112.5) 위에 히타치 전자레인지(48.6×41.2×29.6). 카운터 바로 옆, 문은 방 쪽
+      {
+        id: newId('x'),
+        name: '냉장고 + 전자레인지',
+        x: FRIDGE.d / 2,
+        y: COUNTER_TOP_GAP + COUNTER_LEN + FRIDGE.w / 2,
+        width: FRIDGE.w,
+        depth: FRIDGE.d,
+        height: FRIDGE.h,
+        rotation: 270,
+        color: '#f4f4f2',
+        shape: 'fridgeMicrowave',
+      },
     ],
   };
-}
-
-/** 카운터 바로 옆, 문이 방 쪽을 보게 둔 냉장고 + 전자레인지 (배치안마다 옮길 수 있게 가구로 둔다) */
-export function fridge(): Furniture {
-  const p = preset('my-fridge-microwave');
-  return place('my-fridge-microwave', p.depth / 2, COUNTER_TOP_GAP + COUNTER_LEN + p.width / 2, 270);
 }
 
 function layoutA(): Layout {
@@ -178,7 +186,6 @@ function layoutA(): Layout {
     name: 'A안',
     updatedAt: Date.now(),
     furniture: [
-      fridge(),
       place('sofa-2', 329.5, 250, 90),
       place('tv-stand', 20, 315, 270),
       place('dining-2', 150, 120),
@@ -197,7 +204,6 @@ function layoutB(): Layout {
     name: 'B안',
     updatedAt: Date.now(),
     furniture: [
-      fridge(),
       place('sofa-2', 240, 310, 180),
       place('tv-stand', 290, 95),
       place('dining-2', 110, 280),
