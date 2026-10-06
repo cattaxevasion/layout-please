@@ -14,6 +14,7 @@ export function createInitialUi(): UiState {
     snap: { grid: true, gridSize: 5, walls: true, furniture: true, threshold: 8 },
     walls3d: 'auto',
     readOnly: false,
+    notice: null,
   };
 }
 

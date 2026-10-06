@@ -59,4 +59,9 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// 같은 탭에서 다른 공유 링크를 열면 새로 불러온다
+window.addEventListener('hashchange', () => {
+  if (location.hash.startsWith('#s=')) location.reload();
+});
+
 render(<App />, document.getElementById('app')!);

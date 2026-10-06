@@ -130,7 +130,7 @@ kbd {
   align-items: center;
   gap: 2px;
 }
-.segmented {
+.view-switch {
   margin-left: auto;
 }
 
@@ -565,4 +565,114 @@ button.badge.warn {
 }
 .segmented-inline button + button {
   margin-left: -1px;
+}
+
+/* ───────── 메뉴, 대화상자, 안내 ───────── */
+
+.menu {
+  position: relative;
+}
+.menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+.menu-list button {
+  border: none;
+  text-align: left;
+  padding: 7px 10px;
+}
+.menu-list button:hover {
+  background: #f3f1ed;
+}
+.menu-list hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.modal {
+  width: min(560px, 100%);
+  padding: 18px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.modal textarea {
+  width: 100%;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  resize: vertical;
+  word-break: break-all;
+}
+.share-size {
+  font-size: 13px;
+  color: var(--muted);
+}
+.share-size.warn {
+  color: #b26a00;
+}
+.share-size.danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.share-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  background: #fff7e0;
+  border-bottom: 1px solid #f0dca0;
+}
+.share-banner-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 60;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100% - 32px));
+  padding: 10px 16px;
+  background: #2b2a28;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }

@@ -186,6 +186,8 @@ export interface UiState {
   walls3d: 'auto' | 'solid' | 'hidden';
   /** 공유 링크로 열었을 때 열람 상태 */
   readOnly: boolean;
+  /** 화면 아래에 잠깐 띄우는 안내 문구 */
+  notice: string | null;
 }
 
 // ───────── 충돌 결과 (계산값) ─────────

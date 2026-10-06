@@ -1,4 +1,5 @@
 import type { UiState } from '../model/types';
+import { FileMenu } from './FileMenu';
 import { actions, store, useApp } from '../store';
 import {
   selectActiveLayout,
@@ -37,46 +38,51 @@ export function Toolbar() {
       )}
       <LayoutTabs />
       {mode === 'arrange' && <ProblemBadge />}
-      <div class="toolbar-group">
-        <button onClick={actions.undo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">
-          ↶ 되돌리기
-        </button>
-        <button onClick={actions.redo} disabled={!canRedo} title="다시 실행 (Ctrl+Y)">
-          ↷ 다시 실행
-        </button>
-      </div>
-      <div class="toolbar-group snap">
-        <span class="muted">스냅</span>
-        <label>
-          <input type="checkbox" checked={snap.grid} onChange={(e) => actions.setSnap({ grid: e.currentTarget.checked })} />
-          그리드
-        </label>
-        <select
-          value={snap.gridSize}
-          disabled={!snap.grid}
-          onChange={(e) => actions.setSnap({ gridSize: Number(e.currentTarget.value) })}
-          title="그리드 간격"
-        >
-          {[1, 5, 10, 25, 50].map((g) => (
-            <option key={g} value={g}>
-              {g}cm
-            </option>
-          ))}
-        </select>
-        <label>
-          <input type="checkbox" checked={snap.walls} onChange={(e) => actions.setSnap({ walls: e.currentTarget.checked })} />
-          벽
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={snap.furniture}
-            onChange={(e) => actions.setSnap({ furniture: e.currentTarget.checked })}
-          />
-          가구
-        </label>
-      </div>
-      <div class="toolbar-group segmented">
+      {!readOnly && (
+        <>
+          <div class="toolbar-group">
+            <button onClick={actions.undo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">
+              ↶<span class="label-text"> 되돌리기</span>
+            </button>
+            <button onClick={actions.redo} disabled={!canRedo} title="다시 실행 (Ctrl+Y)">
+              ↷<span class="label-text"> 다시 실행</span>
+            </button>
+          </div>
+          <div class="toolbar-group snap">
+            <span class="muted">스냅</span>
+            <label>
+              <input type="checkbox" checked={snap.grid} onChange={(e) => actions.setSnap({ grid: e.currentTarget.checked })} />
+              그리드
+            </label>
+            <select
+              value={snap.gridSize}
+              disabled={!snap.grid}
+              onChange={(e) => actions.setSnap({ gridSize: Number(e.currentTarget.value) })}
+              title="그리드 간격"
+            >
+              {[1, 5, 10, 25, 50].map((g) => (
+                <option key={g} value={g}>
+                  {g}cm
+                </option>
+              ))}
+            </select>
+            <label>
+              <input type="checkbox" checked={snap.walls} onChange={(e) => actions.setSnap({ walls: e.currentTarget.checked })} />
+              벽
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={snap.furniture}
+                onChange={(e) => actions.setSnap({ furniture: e.currentTarget.checked })}
+              />
+              가구
+            </label>
+          </div>
+          <FileMenu />
+        </>
+      )}
+      <div class="toolbar-group segmented-inline view-switch">
         {VIEWS.map(([v, label]) => (
           <button key={v} class={view === v ? 'active' : ''} onClick={() => actions.setView(v)}>
             {label}
@@ -90,6 +96,8 @@ export function Toolbar() {
 function LayoutTabs() {
   const doc = useApp(selectDoc);
   const active = useApp(selectActiveLayout);
+  const readOnly = useApp((s) => s.ui.readOnly);
+  if (readOnly) return null;
   return (
     <div class="toolbar-group layout-tabs">
       <select

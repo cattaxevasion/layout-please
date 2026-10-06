@@ -13,7 +13,7 @@ import type {
   UiState,
   Vec2,
 } from '../model/types';
-import type { AppState } from './appState';
+import { createAppState, type AppState } from './appState';
 import type { Store } from './createStore';
 import * as hist from './history';
 
@@ -87,6 +87,9 @@ export function createActions(store: Store<AppState>) {
     },
     setWalls3d(walls3d: UiState['walls3d']) {
       setUi({ walls3d });
+    },
+    notify(notice: string | null) {
+      setUi({ notice });
     },
 
     // ───────── 가구 ─────────
@@ -227,6 +230,13 @@ export function createActions(store: Store<AppState>) {
     replaceDoc(next: ProjectDoc) {
       commit(() => next);
       setUi({ selection: null });
+    },
+    /** 문서를 새로 연다: Undo 기록을 비우고 열람 모드를 끝낸다 (화면 설정은 유지) */
+    openDoc(next: ProjectDoc) {
+      gestureBase = null;
+      store.setState((s) =>
+        createAppState(next, { view: s.ui.view, snap: s.ui.snap, walls3d: s.ui.walls3d }),
+      );
     },
   };
   return actions;

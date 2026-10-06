@@ -207,9 +207,9 @@ export function Plan2D() {
     if (pointers.current.size > 2) return;
 
     const ui = store.getState().ui;
-    if (e.button === 1 || ui.readOnly) return startPan(e);
+    if (e.button === 1) return startPan(e);
 
-    if (ui.mode === 'structure') {
+    if (ui.mode === 'structure' && !ui.readOnly) {
       if (!beginStructure(e)) startPan(e);
       return;
     }
@@ -219,7 +219,8 @@ export function Plan2D() {
     const id = el.getAttribute('data-fid')!;
     actions.select({ kind: 'furniture', id });
     const f = selectFurnitureList(store.getState()).find((x) => x.id === id);
-    if (!f) return startPan(e);
+    // 열람 모드에서는 선택(속성 보기)만 되고 옮길 수 없다
+    if (!f || ui.readOnly) return startPan(e);
     const p = toWorld(e.clientX, e.clientY);
     actions.beginGesture();
     gesture.current = {
