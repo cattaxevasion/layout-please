@@ -209,6 +209,27 @@ const builders: Record<ShapeKind, (g: THREE.Group, W: number, D: number, H: numb
     }
   },
 
+  // 냉장실(위)·냉동실(아래) 두 문과 사이 손잡이 줄
+  fridge(g, W, D, H, p) {
+    const doorT = 2;
+    box(g, p.main, W, H, D - doorT, 0, 0, -doorT / 2);
+    const split = H * 0.4;
+    box(g, p.main, W - 0.6, split - 1.5, doorT, 0, 0.5, D / 2 - doorT / 2); // 냉동실 문
+    box(g, p.main, W - 0.6, H - split - 1.5, doorT, 0, split + 1, D / 2 - doorT / 2); // 냉장실 문
+    box(g, METAL, W - 2, 1.2, 1.5, 0, split - 1.2, D / 2 + 0.3); // 손잡이 줄
+  },
+
+  // 아래 몸통 + 뒤 기둥 + 위 헤드(앞으로 튀어나옴), 그 사이가 물 받는 칸
+  waterServer(g, W, D, H, p) {
+    const lower = H * 0.48;
+    const headY = H * 0.78;
+    box(g, p.main, W, lower, D, 0, 0, 0);
+    box(g, p.main, W, H - lower, D * 0.75, 0, lower, -D * 0.125);
+    box(g, p.main, W, H - headY, D, 0, headY, 0);
+    box(g, p.dark, W * 0.6, 1.5, D * 0.2, 0, lower, D * 0.38); // 받침
+    cylinder(g, METAL, 1.2, 4, 0, headY - 4, D * 0.3); // 꼭지
+  },
+
   // 모서리 기둥 4개 + 선반 3단 + 뒤·옆 X자 보강대
   metalShelf(g, W, D, H, p) {
     const post = 4;

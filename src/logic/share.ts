@@ -88,7 +88,18 @@ function compactHouse(house: House, id: (raw: string) => string): CompactHouse {
       d.panels ?? null,
     ]),
     n: house.windows.map((o) => [id(o.id), id(o.wallId), n(o.offset), n(o.width), n(o.sillHeight), n(o.height)]),
-    x: house.fixtures.map((f) => [id(f.id), f.name, n(f.x), n(f.y), n(f.width), n(f.depth), n(f.height), n(f.rotation), f.color]),
+    x: house.fixtures.map((f) => [
+      id(f.id),
+      f.name,
+      n(f.x),
+      n(f.y),
+      n(f.width),
+      n(f.depth),
+      n(f.height),
+      n(f.rotation),
+      f.color,
+      f.shape ?? null,
+    ]),
   };
 }
 
@@ -173,7 +184,7 @@ function fromCompact(c: Compact): unknown {
         sillHeight: num(sill),
         height: num(height),
       })),
-      fixtures: c.x.map(([id, name, x, y, w, d, h, rot, color]) => ({
+      fixtures: c.x.map(([id, name, x, y, w, d, h, rot, color, shape]) => ({
         id: str(id),
         name: str(name),
         x: num(x),
@@ -183,6 +194,7 @@ function fromCompact(c: Compact): unknown {
         height: num(h),
         rotation: num(rot),
         color: str(color),
+        ...opt('shape', shape),
       })),
     },
     layout: {

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { PLAIN } from '../model/finishes';
 import { solidIntervals, wallFrame } from '../logic/openings';
 import type { Door, House, Wall } from '../model/types';
+import { buildFurniture } from './furnitureMesh';
 import { cmUvBox, finishTexture } from './textures';
 
 export interface WallObject {
@@ -142,15 +143,20 @@ export function buildHouse(house: House): HouseObjects {
   }
 
   for (const f of house.fixtures) {
-    const g = new THREE.Group();
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(f.width, f.height, f.depth),
-      new THREE.MeshStandardMaterial({ color: f.color, roughness: 0.6 }),
-    );
-    m.position.y = f.height / 2;
-    m.castShadow = true;
-    m.receiveShadow = true;
-    g.add(m);
+    let g: THREE.Group;
+    if (f.shape) {
+      g = buildFurniture({ shape: f.shape, width: f.width, depth: f.depth, height: f.height, color: f.color });
+    } else {
+      g = new THREE.Group();
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(f.width, f.height, f.depth),
+        new THREE.MeshStandardMaterial({ color: f.color, roughness: 0.6 }),
+      );
+      m.position.y = f.height / 2;
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+    }
     g.position.set(f.x, 0, f.y);
     g.rotation.y = -THREE.MathUtils.degToRad(f.rotation);
     root.add(g);

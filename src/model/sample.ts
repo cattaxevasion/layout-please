@@ -26,6 +26,7 @@ const PASSAGE_WALL = 17; // 통로–양실 사이 벽
 const WASHROOM_WALL_LEN = 73.5; // 통로 쪽 세면실 벽 (나머지가 문)
 const DOOR_W = 68.5; // 미닫이 문 폭
 const CEILING = 250;
+const FRIDGE = { w: 48, d: 60, h: 112.5 }; // 샤프 SJ-GD14D
 
 // ── 파생값 ──
 // LDK 가로는 365로 쟀지만 아래쪽 실측 합(144+17+211)이 372이고, 372일 때 카운터 깊이가
@@ -162,16 +163,18 @@ export function createSampleHouse(): House {
         rotation: 270,
         color: '#d9d9d9',
       },
+      // 샤프 SJ-GD14D: 폭 48 × 깊이 60 × 높이 112.5, 카운터 바로 옆에 문이 방 쪽을 보게
       {
         id: newId('x'),
-        name: '냉장고 자리',
-        x: COUNTER_D / 2,
-        y: COUNTER_TOP_GAP + COUNTER_LEN + 30,
-        width: 60,
-        depth: COUNTER_D,
-        height: 180,
+        name: '냉장고',
+        x: FRIDGE.d / 2,
+        y: COUNTER_TOP_GAP + COUNTER_LEN + FRIDGE.w / 2,
+        width: FRIDGE.w,
+        depth: FRIDGE.d,
+        height: FRIDGE.h,
         rotation: 270,
-        color: '#f2f2f2',
+        color: '#f4f4f2',
+        shape: 'fridge',
       },
     ],
   };

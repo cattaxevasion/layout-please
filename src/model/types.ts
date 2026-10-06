@@ -95,6 +95,8 @@ export interface Fixture {
   height: number;
   rotation: number;
   color: string;
+  /** 3D 모양 (없으면 박스). 냉장고처럼 가구 형태를 빌려 쓴다 */
+  shape?: ShapeKind;
 }
 
 // ───────── 가구 ─────────
@@ -112,7 +114,9 @@ export type ShapeKind =
   | 'standingDesk'
   | 'officeChair'
   | 'drawers'
-  | 'metalShelf';
+  | 'metalShelf'
+  | 'fridge'
+  | 'waterServer';
 
 export interface Furniture {
   id: Id;
