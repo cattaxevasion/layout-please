@@ -5,15 +5,15 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { type Segment } from '../geometry/obb';
 import { dot, sub } from '../geometry/vec';
 import { distancesToWalls, formatCm } from '../logic/measure';
-import { wallFrame } from '../logic/openings';
+import { doorKeepOutZones, wallFrame } from '../logic/openings';
 import { snapPoint, snapRect, snapTargets, snapToGrid } from '../logic/snap';
 import { BUILTIN_PRESETS } from '../model/presets';
 import type { Furniture, Vec2 } from '../model/types';
 import { actions, store, useApp } from '../store';
-import { selectFurnitureList, selectHouse, selectSelectedFurniture } from '../store/selectors';
+import { selectCollisions, selectFurnitureList, selectHouse, selectSelectedFurniture } from '../store/selectors';
 import { clampScale, fitCamera, houseBounds, type Camera } from './camera';
 import { FurnitureGlyph } from './FurnitureGlyph';
-import { DimText, Grid, HouseShapes, Label } from './HouseShapes';
+import { DimText, Grid, HouseShapes, Label, ptsAttr } from './HouseShapes';
 import { StructureOverlay } from './StructureOverlay';
 import { registerViewCenter } from './viewApi';
 
@@ -36,6 +36,7 @@ export function Plan2D() {
   const selection = useApp((s) => s.ui.selection);
   const mode = useApp((s) => s.ui.mode);
   const gridSize = useApp((s) => s.ui.snap.gridSize);
+  const collisions = useApp(selectCollisions);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -339,6 +340,15 @@ export function Plan2D() {
   const structure = mode === 'structure';
 
   const bounds = useMemo(() => houseBounds(house), [house]);
+  // 가구와 부딪힌 문의 금지 영역을 빨갛게 보여 준다
+  const alertZones = useMemo(() => {
+    const doorIds = new Set<string>();
+    collisions.forEach((list) => list.forEach((i) => i.type === 'doorSwing' && i.otherId && doorIds.add(i.otherId)));
+    const walls = new Map(house.walls.map((w) => [w.id, w]));
+    return house.doors
+      .filter((d) => doorIds.has(d.id) && walls.has(d.wallId))
+      .flatMap((d) => doorKeepOutZones(walls.get(d.wallId)!, d));
+  }, [collisions, house]);
   const distances = useMemo(
     () => (selected && !structure ? distancesToWalls(selected, house) : []),
     [selected, house, structure],
@@ -361,9 +371,16 @@ export function Plan2D() {
           <>
             <Grid bounds={bounds} s={cam.s} gridSize={gridSize} />
             <HouseShapes house={house} px={px} selection={structure ? selection : null} />
+            {!structure &&
+              alertZones.map((z, i) => <polygon key={i} points={ptsAttr(z)} class="door-zone-alert" />)}
             <g class="furniture-layer">
               {furniture.map((f) => (
-                <FurnitureItem key={f.id} f={f} selected={!structure && selected?.id === f.id} />
+                <FurnitureItem
+                  key={f.id}
+                  f={f}
+                  selected={!structure && selected?.id === f.id}
+                  problem={!structure && collisions.has(f.id)}
+                />
               ))}
               {!structure &&
                 furniture.map((f) => (
@@ -409,19 +426,33 @@ export function Plan2D() {
   );
 }
 
-function FurnitureItem({ f, selected }: { f: Furniture; selected: boolean }) {
+function FurnitureItem({ f, selected, problem }: { f: Furniture; selected: boolean; problem: boolean }) {
   return (
     <g
       data-fid={f.id}
-      class={`furniture${selected ? ' selected' : ''}`}
+      class={`furniture${selected ? ' selected' : ''}${problem ? ' problem' : ''}`}
       transform={`translate(${f.x} ${f.y}) rotate(${f.rotation})`}
     >
       <FurnitureGlyph
         f={f}
         fill={f.color}
-        stroke={selected ? 'var(--accent)' : 'rgba(0,0,0,0.55)'}
-        strokeWidth={selected ? 2 : 1}
+        stroke={problem ? 'var(--danger)' : selected ? 'var(--accent)' : 'rgba(0,0,0,0.55)'}
+        strokeWidth={selected || problem ? 2 : 1}
       />
+      {problem && <rect x={-f.width / 2} y={-f.depth / 2} width={f.width} height={f.depth} class="problem-overlay" />}
+      {problem && selected && (
+        <rect
+          x={-f.width / 2}
+          y={-f.depth / 2}
+          width={f.width}
+          height={f.depth}
+          fill="none"
+          stroke="var(--accent)"
+          stroke-width={2}
+          stroke-dasharray="6 4"
+          vector-effect="non-scaling-stroke"
+        />
+      )}
     </g>
   );
 }

@@ -1,6 +1,12 @@
 import type { UiState } from '../model/types';
-import { actions, useApp } from '../store';
-import { selectActiveLayout, selectCanRedo, selectCanUndo, selectDoc } from '../store/selectors';
+import { actions, store, useApp } from '../store';
+import {
+  selectActiveLayout,
+  selectCanRedo,
+  selectCanUndo,
+  selectCollisions,
+  selectDoc,
+} from '../store/selectors';
 
 const VIEWS: [UiState['view'], string][] = [
   ['split', '2D + 3D'],
@@ -30,6 +36,7 @@ export function Toolbar() {
         </div>
       )}
       <LayoutTabs />
+      {mode === 'arrange' && <ProblemBadge />}
       <div class="toolbar-group">
         <button onClick={actions.undo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">
           ↶ 되돌리기
@@ -121,5 +128,28 @@ function LayoutTabs() {
         삭제
       </button>
     </div>
+  );
+}
+
+/** 문제가 있는 가구 수. 누를 때마다 다음 문제 가구를 선택한다. */
+function ProblemBadge() {
+  const count = useApp((s) => selectCollisions(s).size);
+  if (count === 0) return <span class="badge ok">✓ 충돌 없음</span>;
+  return (
+    <button
+      class="badge warn"
+      title="누르면 문제 있는 가구를 차례로 선택합니다"
+      onClick={() => {
+        const s = store.getState();
+        const ids = selectActiveLayout(s)
+          .furniture.map((f) => f.id)
+          .filter((id) => selectCollisions(s).has(id));
+        const sel = s.ui.selection;
+        const cur = sel?.kind === 'furniture' ? ids.indexOf(sel.id) : -1;
+        actions.select({ kind: 'furniture', id: ids[(cur + 1) % ids.length] });
+      }}
+    >
+      ⚠ 확인 필요 {count}개
+    </button>
   );
 }

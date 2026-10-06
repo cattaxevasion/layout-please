@@ -1,14 +1,23 @@
 // 오른쪽 패널: 선택한 가구의 속성을 숫자로 정밀 편집.
 
+import { describeIssue } from '../logic/collision';
 import { SHAPE_LABELS } from '../model/presets';
 import type { ShapeKind } from '../model/types';
-import { actions, useApp } from '../store';
-import { selectSelectedFurniture } from '../store/selectors';
+import { actions, store, useApp } from '../store';
+import { selectCollisions, selectFurnitureList, selectSelectedFurniture } from '../store/selectors';
 import { NumberField } from './NumberField';
 
 export function PropertiesPanel() {
   const f = useApp(selectSelectedFurniture);
   const readOnly = useApp((s) => s.ui.readOnly);
+  const issues = useApp((s) => (f ? selectCollisions(s).get(f.id) : undefined));
+  const nameOf = (id: string) => {
+    const s = store.getState();
+    return (
+      selectFurnitureList(s).find((x) => x.id === id)?.name ??
+      s.history.present.house.fixtures.find((x) => x.id === id)?.name
+    );
+  };
 
   if (!f) {
     return (
@@ -43,6 +52,13 @@ export function PropertiesPanel() {
   return (
     <aside class="panel props" key={f.id}>
       <h3>속성</h3>
+      {issues && (
+        <ul class="issues">
+          {issues.map((i, k) => (
+            <li key={k}>⚠ {describeIssue(i, nameOf)}</li>
+          ))}
+        </ul>
+      )}
       <label class="field">
         <span class="field-label">이름</span>
         <input

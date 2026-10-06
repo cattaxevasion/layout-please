@@ -53,3 +53,62 @@ export function doorSwing(w: Wall, d: Door) {
   const radius = d.type === 'folding' ? d.width / 2 : d.swingRadius;
   return { hinge, closedDir, openDir, radius };
 }
+
+/**
+ * 벽 길이 [0, length]에서 개구부 구간을 뺀 나머지(막힌 부분) 구간들.
+ * 3D 벽 만들기와 충돌 검사에서 문 자리를 비우는 데 쓴다.
+ */
+export function solidIntervals(length: number, openings: readonly Pick<Opening, 'offset' | 'width'>[]): [number, number][] {
+  const cuts = openings
+    .map((o) => [Math.max(0, o.offset), Math.min(length, o.offset + o.width)] as [number, number])
+    .filter(([s, e]) => e > s)
+    .sort((a, b) => a[0] - b[0]);
+  const out: [number, number][] = [];
+  let cur = 0;
+  for (const [s, e] of cuts) {
+    if (s > cur) out.push([cur, s]);
+    cur = Math.max(cur, e);
+  }
+  if (cur < length) out.push([cur, length]);
+  return out;
+}
+
+/** 벽의 [s, e] 구간을 두께만큼 덮는 사각형 */
+export function wallPiecePolygon(w: Wall, s: number, e: number): Vec2[] {
+  const { u, n } = wallFrame(w);
+  const h = scale(n, w.thickness / 2);
+  const a = add(w.a, scale(u, s));
+  const b = add(w.a, scale(u, e));
+  return [add(a, h), add(b, h), sub(b, h), sub(a, h)];
+}
+
+/** 문 앞을 비워 둬야 하는 영역 (미닫이/개구부: 양쪽으로 이만큼) */
+export const DOOR_CLEARANCE = 30;
+
+/**
+ * 문 때문에 가구를 두면 안 되는 영역 (볼록 다각형 목록).
+ * 여닫이/접이문은 문짝이 지나가는 부채꼴, 미닫이/개구부는 문 앞뒤로 DOOR_CLEARANCE 깊이의 통로.
+ */
+export function doorKeepOutZones(w: Wall, d: Door): Vec2[][] {
+  if (d.type === 'hinged' || d.type === 'folding') {
+    const { hinge, closedDir, openDir, radius } = doorSwing(w, d);
+    const a0 = Math.atan2(closedDir.y, closedDir.x);
+    let delta = Math.atan2(openDir.y, openDir.x) - a0;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    const steps = 8;
+    const pts: Vec2[] = [hinge];
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + (delta * i) / steps;
+      pts.push({ x: hinge.x + Math.cos(a) * radius, y: hinge.y + Math.sin(a) * radius });
+    }
+    return [pts];
+  }
+  const { n } = wallFrame(w);
+  const [s, e] = openingSpan(w, d);
+  return [1, -1].map((side) => {
+    const f0 = scale(n, (side * w.thickness) / 2);
+    const f1 = scale(n, side * (w.thickness / 2 + DOOR_CLEARANCE));
+    return [add(s, f0), add(e, f0), add(e, f1), add(s, f1)];
+  });
+}
