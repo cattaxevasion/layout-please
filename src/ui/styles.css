@@ -1,0 +1,378 @@
+:root {
+  --bg: #f4f2ee;
+  --panel: #ffffff;
+  --fg: #222;
+  --muted: #7a7a7a;
+  --line: #dedad3;
+  --accent: #2f6fde;
+  --accent-weak: #e6eefc;
+  --danger: #d33a2c;
+  --wall: #3d3a36;
+  --door-gap: #f4f2ee;
+  --window: #a9d6f5;
+  --grid-minor: rgba(0, 0, 0, 0.06);
+  --grid-major: rgba(0, 0, 0, 0.14);
+  --plan-bg: #fbfaf8;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) {
+  border-color: #b9b4ab;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button.active {
+  border-color: var(--accent);
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-weight: 600;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.danger {
+  color: var(--danger);
+}
+button.icon {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+}
+
+select,
+input:not([type='checkbox']):not([type='color']) {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  min-width: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+kbd {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #faf9f7;
+}
+
+/* ───────── 레이아웃 ───────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.app-title {
+  font-size: 16px;
+}
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toolbar-group.snap label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.segmented {
+  margin-left: auto;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.panel {
+  width: 250px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel);
+}
+.palette {
+  border-right: 1px solid var(--line);
+}
+.props {
+  border-left: 1px solid var(--line);
+}
+.panel h3 {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.panel h3:not(:first-child) {
+  margin-top: 20px;
+}
+
+.views {
+  flex: 1;
+  display: grid;
+  min-width: 0;
+}
+.views-split {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ───────── 패널 내용 ───────── */
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.preset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
+.preset:hover {
+  background: #f3f1ed;
+}
+.preset-name {
+  flex: 1;
+}
+.preset-size {
+  color: var(--muted);
+  font-size: 12px;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+.field-label {
+  width: 36px;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.field input:not([type='color']),
+.field select {
+  flex: 1;
+  width: 100%;
+}
+.field-unit {
+  width: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.field-group {
+  padding: 4px 0;
+  border-top: 1px solid #f0ede8;
+}
+.row {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 4px 42px;
+}
+.actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+}
+.box-form .primary {
+  width: 100%;
+  margin-top: 4px;
+}
+.shortcuts {
+  padding-left: 18px;
+}
+.shortcuts li {
+  margin: 4px 0;
+}
+
+/* ───────── 2D 평면도 ───────── */
+
+.plan2d {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--plan-bg);
+  overflow: hidden;
+}
+.plan2d svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+.plan-tools {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 4px;
+}
+.plan-tools button {
+  min-width: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.grid-minor {
+  stroke: var(--grid-minor);
+}
+.grid-major {
+  stroke: var(--grid-major);
+}
+.room {
+  stroke: none;
+}
+.room-label {
+  fill: rgba(0, 0, 0, 0.28);
+  font-weight: 600;
+  pointer-events: none;
+}
+.wall {
+  fill: var(--wall);
+}
+.window polygon {
+  fill: var(--window);
+}
+.window line {
+  stroke: #4a90c2;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.door-gap {
+  fill: var(--door-gap);
+}
+.door polygon:not(.door-gap) {
+  fill: #fff;
+  stroke: #6b665e;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.door line {
+  stroke: #6b665e;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.door-arc {
+  fill: none;
+  stroke: #9a948a;
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.fixture rect {
+  fill: #d6d3ce;
+  stroke: #9c978f;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.furniture {
+  cursor: move;
+}
+.label,
+.dim-text {
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-linejoin: round;
+}
+.label {
+  fill: #222;
+}
+.label.muted {
+  fill: #6f6a62;
+}
+.dim line {
+  stroke: var(--accent);
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.dim-text {
+  fill: var(--accent);
+  font-weight: 600;
+}
+.snap-guide {
+  stroke: #e0730f;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.view3d-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  background: #eceae5;
+}
