@@ -171,6 +171,9 @@ export function createActions(store: Store<AppState>) {
       commit((d) => ops.updateHouse(d, () => r.house));
       setUi({ selection: { kind, id: r.id } as Selection });
     },
+    setWallFinish(id: Id | undefined) {
+      actions.updateHouse((h) => st.setWallFinish(h, id));
+    },
     setCeilingHeight(v: number) {
       actions.updateHouse((h) => st.setCeilingHeight(h, v));
     },

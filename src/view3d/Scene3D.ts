@@ -13,6 +13,7 @@ import { selectCollisions, selectFurnitureList } from '../store/selectors';
 import { houseBounds } from '../view2d/camera';
 import { buildFurniture, disposeGroup, furnitureShapeKey } from './furnitureMesh';
 import { buildHouse, disposeHouse, type HouseObjects } from './houseMesh';
+import { configureTextures } from './textures';
 
 interface FurnitureObject {
   key: string;
@@ -59,6 +60,11 @@ export class Scene3D {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
+    // 질감 이미지가 늦게 도착하면 그때 다시 그린다
+    configureTextures({
+      onLoad: () => (this.dirty = true),
+      anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
+    });
     this.renderer.domElement.style.touchAction = 'none';
 
     this.scene.background = new THREE.Color('#e9e6e0');
@@ -288,8 +294,10 @@ export class Scene3D {
       }
       w.material.opacity = opacity;
       w.material.depthWrite = opacity === 1;
-      w.leaf.opacity = opacity === 1 ? 1 : 0.2;
-      w.leaf.depthWrite = opacity === 1;
+      for (const leaf of w.leaves) {
+        leaf.opacity = opacity === 1 ? 1 : 0.2;
+        leaf.depthWrite = opacity === 1;
+      }
       w.edges.opacity = opacity === 1 ? 1 : 0.35;
       w.group.scale.y = mode === 'hidden' ? Math.min(1, 15 / H) : 1;
       w.group.traverse((o) => {

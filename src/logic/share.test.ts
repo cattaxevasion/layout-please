@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getActiveLayout } from '../model/ops';
 import { createSampleDoc } from '../model/sample';
 import { DocError } from '../model/migrate';
+import LZString from 'lz-string';
 import {
   buildShareUrl,
   decodeShare,
@@ -56,5 +57,37 @@ describe('공유 링크', () => {
     const d = createSampleDoc();
     const enc = encodeShare(d.house, getActiveLayout(d));
     expect(() => parseShareHash(SHARE_PREFIX + enc.slice(0, enc.length / 2))).toThrow(DocError);
+  });
+});
+
+describe('공유 링크 마감재', () => {
+  it('바닥재·벽지·문 표면·문짝 수가 링크를 거쳐도 남는다', () => {
+    const d = createSampleDoc();
+    const s = decodeShare(encodeShare(d.house, getActiveLayout(d)));
+    expect(s.house.wallFinish).toBe('home-wall');
+    expect(s.house.rooms.every((r) => r.floorFinish === 'home-floor')).toBe(true);
+    expect(s.house.walls.filter((w) => w.finish === 'home-accent')).toHaveLength(1);
+    const closet = s.house.doors.find((x) => x.finish === 'home-closet')!;
+    expect(closet.panels).toBe(2);
+    // 지정하지 않은 필드는 만들지 않는다
+    expect(s.house.doors.filter((x) => 'finish' in x)).toHaveLength(1);
+  });
+
+  it('예전 형식(1) 링크도 열린다', () => {
+    const old = {
+      v: 1,
+      f: 1,
+      c: 240,
+      r: [['0', '방', '#fff', [0, 0, 100, 0, 100, 100, 0, 100]]],
+      w: [['1', 0, -5, 100, -5, 10, '0']],
+      d: [],
+      n: [],
+      x: [],
+      l: ['A안', [['2', '박스', 'box', 50, 50, 50, '#888', 50, 50, 0]]],
+    };
+    const s = decodeShare(LZString.compressToEncodedURIComponent(JSON.stringify(old)));
+    expect(s.house.rooms[0].floorFinish).toBeUndefined();
+    expect(s.house.walls[0]).toMatchObject({ roomId: '0', thickness: 10 });
+    expect(s.layout.furniture[0].name).toBe('박스');
   });
 });

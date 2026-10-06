@@ -2,6 +2,7 @@
 //
 // 링크를 짧게 하려고 객체를 필드 이름 없는 고정 순서 배열로 바꾸고, id는 짧은 번호(36진수)로 다시 매긴다.
 // 형식을 바꿀 때는 FORMAT을 올리고 fromCompact에 옛 형식 처리를 남겨 둔다.
+// 형식 2: 마감재(바닥재·벽지·문 표면)와 미닫이 문짝 수를 배열 끝에 추가. 형식 1 링크도 그대로 읽힌다.
 
 import LZString from 'lz-string';
 import { DocError, migrateShare } from '../model/migrate';
@@ -14,7 +15,8 @@ export const SHARE_WARN_LENGTH = 2000;
 /** 이보다 길면 브라우저나 서비스에 따라 아예 열리지 않을 수 있다 */
 export const SHARE_DANGER_LENGTH = 16000;
 
-const FORMAT = 1;
+const FORMAT = 2;
+const READABLE_FORMATS = [1, 2];
 const DOOR_TYPES: DoorType[] = ['hinged', 'folding', 'sliding', 'opening'];
 
 /** 0.01cm 단위로 반올림 (부동소수 꼬리 제거) */
@@ -24,6 +26,7 @@ type Tuple = (string | number | null | number[])[];
 
 interface CompactHouse {
   c: number; // 천장 높이
+  g?: string | null; // 집 기본 벽지
   r: Tuple[]; // 방
   w: Tuple[]; // 벽
   d: Tuple[]; // 문
@@ -52,8 +55,24 @@ function idTable() {
 function compactHouse(house: House, id: (raw: string) => string): CompactHouse {
   return {
     c: n(house.ceilingHeight),
-    r: house.rooms.map((r) => [id(r.id), r.name, r.floorColor, r.points.flatMap((p) => [n(p.x), n(p.y)])]),
-    w: house.walls.map((w) => [id(w.id), n(w.a.x), n(w.a.y), n(w.b.x), n(w.b.y), n(w.thickness), w.roomId ? id(w.roomId) : null]),
+    g: house.wallFinish ?? null,
+    r: house.rooms.map((r) => [
+      id(r.id),
+      r.name,
+      r.floorColor,
+      r.points.flatMap((p) => [n(p.x), n(p.y)]),
+      r.floorFinish ?? null,
+    ]),
+    w: house.walls.map((w) => [
+      id(w.id),
+      n(w.a.x),
+      n(w.a.y),
+      n(w.b.x),
+      n(w.b.y),
+      n(w.thickness),
+      w.roomId ? id(w.roomId) : null,
+      w.finish ?? null,
+    ]),
     d: house.doors.map((d) => [
       id(d.id),
       id(d.wallId),
@@ -65,6 +84,8 @@ function compactHouse(house: House, id: (raw: string) => string): CompactHouse {
       d.side,
       n(d.swingRadius),
       n(d.swingAngle),
+      d.finish ?? null,
+      d.panels ?? null,
     ]),
     n: house.windows.map((o) => [id(o.id), id(o.wallId), n(o.offset), n(o.width), n(o.sillHeight), n(o.height)]),
     x: house.fixtures.map((f) => [id(f.id), f.name, n(f.x), n(f.y), n(f.width), n(f.depth), n(f.height), n(f.rotation), f.color]),
@@ -104,27 +125,33 @@ function toCompact(house: House, layout: Layout): Compact {
 }
 
 function fromCompact(c: Compact): unknown {
-  if (c.f !== FORMAT) throw new DocError('이 앱보다 새로운 형식의 공유 링크입니다. 페이지를 새로고침해 주세요.');
+  if (!READABLE_FORMATS.includes(c.f)) {
+    throw new DocError('이 앱보다 새로운 형식의 공유 링크입니다. 페이지를 새로고침해 주세요.');
+  }
+  /** 형식 1 링크에는 없는 뒤쪽 칸은 undefined → 필드를 만들지 않는다 */
+  const opt = <K extends string>(key: K, v: unknown) => (typeof v === 'string' || typeof v === 'number' ? { [key]: v } : {});
   const num = (v: unknown) => (typeof v === 'number' ? v : Number(v));
   const str = (v: unknown) => String(v ?? '');
   return {
     version: c.v,
     house: {
       ceilingHeight: c.c,
-      rooms: c.r.map(([id, name, color, pts]) => {
+      ...opt('wallFinish', c.g),
+      rooms: c.r.map(([id, name, color, pts, floorFinish]) => {
         const flat = pts as number[];
         const points = [];
         for (let i = 0; i + 1 < flat.length; i += 2) points.push({ x: flat[i], y: flat[i + 1] });
-        return { id: str(id), name: str(name), floorColor: str(color), points };
+        return { id: str(id), name: str(name), floorColor: str(color), points, ...opt('floorFinish', floorFinish) };
       }),
-      walls: c.w.map(([id, ax, ay, bx, by, t, roomId]) => ({
+      walls: c.w.map(([id, ax, ay, bx, by, t, roomId, finish]) => ({
         id: str(id),
         a: { x: num(ax), y: num(ay) },
         b: { x: num(bx), y: num(by) },
         thickness: num(t),
         ...(roomId !== null && roomId !== undefined ? { roomId: str(roomId) } : {}),
+        ...opt('finish', finish),
       })),
-      doors: c.d.map(([id, wallId, offset, width, type, height, hinge, side, radius, angle]) => ({
+      doors: c.d.map(([id, wallId, offset, width, type, height, hinge, side, radius, angle, finish, panels]) => ({
         id: str(id),
         wallId: str(wallId),
         offset: num(offset),
@@ -135,6 +162,8 @@ function fromCompact(c: Compact): unknown {
         side: side === 1 ? 1 : -1,
         swingRadius: num(radius),
         swingAngle: num(angle),
+        ...opt('finish', finish),
+        ...opt('panels', panels),
       })),
       windows: c.n.map(([id, wallId, offset, width, sill, height]) => ({
         id: str(id),

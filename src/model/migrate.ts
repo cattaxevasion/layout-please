@@ -80,5 +80,6 @@ function normalizeHouse(h: AnyObj): ProjectDoc['house'] {
     doors: Array.isArray(h.doors) ? h.doors : [],
     windows: Array.isArray(h.windows) ? h.windows : [],
     fixtures: Array.isArray(h.fixtures) ? h.fixtures : [],
+    ...(typeof h.wallFinish === 'string' ? { wallFinish: h.wallFinish } : {}),
   };
 }

@@ -69,21 +69,21 @@ function edgeCoveredBy(p: Vec2, q: Vec2, w: Wall): boolean {
 }
 
 /**
- * 변 p-q에 이어 줄 두께: 가까운(60cm 이내) 평행한 옛 벽이 있으면 그 두께, 없으면 방향과 상관없이
- * 가장 가까운 옛 벽의 두께. 꼭짓점 하나를 옮기는 도중 변이 잠깐 비스듬해져도 두께가 유지되게 한다.
+ * 변 p-q가 이어받을 옛 벽: 가까운(60cm 이내) 평행한 벽이 있으면 그 벽, 없으면 방향과 상관없이 가장 가까운 벽.
+ * 꼭짓점 하나를 옮기는 도중 변이 잠깐 비스듬해져도 두께와 벽지가 유지되게 한다.
  */
-function inheritedThickness(p: Vec2, q: Vec2, walls: readonly Wall[], fallback: number) {
+function inheritFrom(p: Vec2, q: Vec2, walls: readonly Wall[]): Wall | null {
   const e = normalize(sub(q, p));
   const mid = lerp(p, q, 0.5);
-  let parallel: { d: number; t: number } | null = null;
-  let any: { d: number; t: number } | null = null;
+  let parallel: { d: number; w: Wall } | null = null;
+  let any: { d: number; w: Wall } | null = null;
   for (const w of walls) {
     const d = pointSegmentDistance(mid, w.a, w.b);
-    if (!any || d < any.d) any = { d, t: w.thickness };
-    if (Math.abs(cross(e, wallFrame(w).u)) <= PARALLEL && (!parallel || d < parallel.d)) parallel = { d, t: w.thickness };
+    if (!any || d < any.d) any = { d, w };
+    if (Math.abs(cross(e, wallFrame(w).u)) <= PARALLEL && (!parallel || d < parallel.d)) parallel = { d, w };
   }
-  if (parallel && parallel.d <= 60) return parallel.t;
-  return any ? any.t : fallback;
+  if (parallel && parallel.d <= 60) return parallel.w;
+  return any ? any.w : null;
 }
 
 /**
@@ -130,14 +130,27 @@ export function rebuildRoomWalls(house: House, roomId: Id, fallback = DEFAULT_WA
   const pts = ensureClockwise(room.points);
   const n = pts.length;
   const thickness: number[] = [];
+  const finishes: (Id | undefined)[] = [];
   const skip: number[] = [];
   for (let i = 0; i < n; i++) {
     const p = pts[i];
     const q = pts[(i + 1) % n];
-    thickness.push(inheritedThickness(p, q, old.length ? old : others, fallback));
+    const src = inheritFrom(p, q, old.length ? old : others);
+    thickness.push(src ? src.thickness : fallback);
+    // 벽지는 이 방의 옛 벽에서만 이어받는다 (이웃 방 벽의 포인트 벽지가 번지지 않게)
+    finishes.push(old.length && src ? src.finish : undefined);
     if (others.some((w) => edgeCoveredBy(p, q, w))) skip.push(i);
   }
-  const walls = [...others, ...wallsFromRoom(pts, thickness, skip, roomId)];
+  const fresh = wallsFromRoom(pts, thickness, skip, roomId);
+  // wallsFromRoom은 skip한 변을 빼고 순서대로 만들므로 변 번호를 맞춰 벽지를 붙인다
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    if (skip.includes(i)) continue;
+    const f = finishes[i];
+    if (f) fresh[k] = { ...fresh[k], finish: f };
+    k++;
+  }
+  const walls = [...others, ...fresh];
   const oldById = new Map(old.map((w) => [w.id, w]));
   function move<T extends Opening>(list: readonly T[]): T[] {
     const out: T[] = [];

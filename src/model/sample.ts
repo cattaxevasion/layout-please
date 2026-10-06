@@ -70,7 +70,8 @@ export function createSampleHouse(): House {
   const ldk: Room = {
     id: newId('r'),
     name: 'LDK',
-    floorColor: '#e8dcc8',
+    floorColor: '#d5d2cb',
+    floorFinish: 'home-floor',
     // 왼쪽 위 모서리는 주방 카운터 위쪽 기둥(가로 = 카운터 깊이로 가정, 세로 25.5)만큼 막혀 있다
     points: [
       { x: 0, y: COUNTER_TOP_GAP },
@@ -88,7 +89,8 @@ export function createSampleHouse(): House {
   const bedroom: Room = {
     id: newId('r'),
     name: '양실',
-    floorColor: '#efe4d2',
+    floorColor: '#d5d2cb',
+    floorFinish: 'home-floor',
     points: [
       { x: BED_LEFT, y: BED_TOP },
       { x: LDK_W, y: BED_TOP },
@@ -110,15 +112,17 @@ export function createSampleHouse(): House {
   );
   // 양실 변: 0 위(LDK와 공유하므로 생략) 1 오른쪽 외벽 2 발코니 3·4 기둥 5 왼쪽
   const bedroomWalls = wallsFromRoom(bedroom.points, [BED_WALL, EXT, EXT, INT, INT, PASSAGE_WALL], [0], bedroom.id);
-  const [, , ldkTop, , ldkClosetFront, , ldkBedroomSide, ldkWashroomSide, ldkLeft] = ldkWalls;
+  const [, , ldkTop, , ldkClosetFront, ldkRight, ldkBedroomSide, ldkWashroomSide, ldkLeft] = ldkWalls;
+  // LDK 오른쪽 벽만 포인트 벽지
+  ldkRight.finish = 'home-accent';
   const [, bedroomBalcony] = bedroomWalls;
 
   // 벽 a점은 볼록 모서리에서 이웃 벽 두께만큼 늘어나 있으므로 offset에 그만큼 더한다.
   const doors: Door[] = [
     // 현관 → LDK: CL 왼쪽 벽에 붙어 있음 (위쪽 벽은 기둥 옆면 두께만큼 왼쪽으로 늘어나 있다)
     sliding(ldkTop.id, CL_X - DOOR_W - (COUNTER_D - INT), DOOR_W),
-    // CL 문
-    sliding(ldkClosetFront.id, INT, CL_W - INT * 2),
+    // CL 문: 미닫이 두 장, 나뭇결
+    { ...sliding(ldkClosetFront.id, INT, CL_W - INT * 2), finish: 'home-closet', panels: 2 },
     // LDK → 양실: 양실 왼쪽 끝에 있다고 가정 (위치 추정)
     sliding(ldkBedroomSide.id, EXT + BED_W - DOOR_W, DOOR_W),
     // 세면실 문: 통로 왼쪽 벽 73.5 다음부터 통로 오른쪽 끝까지
@@ -141,6 +145,7 @@ export function createSampleHouse(): House {
 
   return {
     ceilingHeight: CEILING,
+    wallFinish: 'home-wall',
     rooms: [ldk, bedroom],
     walls: [...ldkWalls, ...bedroomWalls],
     doors,

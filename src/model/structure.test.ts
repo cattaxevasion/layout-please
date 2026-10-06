@@ -34,6 +34,19 @@ describe('방 꼭짓점 편집과 벽 자동 재생성', () => {
     expect(right.thickness).toBe(15);
   });
 
+  it('방 모양을 바꿔도 벽별 벽지(포인트 벽)가 유지된다', () => {
+    let h = createSampleHouse();
+    const room = ldk(h);
+    h = st.setRoomPoints(
+      h,
+      room.id,
+      room.points.map((p, i) => (i === 5 || i === 6 ? { x: p.x + 20, y: p.y } : p)),
+    );
+    const accent = owned(h, room.id).filter((w) => w.finish === 'home-accent');
+    expect(accent).toHaveLength(1);
+    expect(accent[0].a.x).toBe(372 + 20 + 7.5);
+  });
+
   it('문과 창은 같은 자리의 새 벽으로 옮겨 붙는다', () => {
     const h = createSampleHouse();
     const room = ldk(h);

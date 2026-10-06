@@ -21,6 +21,8 @@ export interface House {
   windows: HouseWindow[];
   /** 붙박이 설비(주방 카운터, 냉장고 자리 등). 구조에 속하며 배치안과 무관하게 고정된다. */
   fixtures: Fixture[];
+  /** 집 기본 벽지 (마감재 id, finishes.ts). 없으면 단색 */
+  wallFinish?: Id;
 }
 
 export interface Room {
@@ -29,6 +31,8 @@ export interface Room {
   /** 실내 면(줄자로 잰 안쪽 치수) 기준 꼭짓점. 화면상 시계방향으로 정규화해 저장한다. */
   points: Vec2[];
   floorColor: string;
+  /** 바닥재 (마감재 id). 없으면 floorColor 단색 */
+  floorFinish?: Id;
 }
 
 export interface Wall {
@@ -40,6 +44,8 @@ export interface Wall {
   thickness: number;
   /** 방 둘레에서 자동 생성된 벽이면 그 방 id. 방 모양을 바꾸면 이 벽들이 다시 만들어진다. */
   roomId?: Id;
+  /** 이 벽만 다른 벽지 (마감재 id, 'plain'이면 단색). 없으면 집 기본 벽지 */
+  finish?: Id;
 }
 
 /** 문과 창은 벽에 붙어 있어 벽을 옮기면 함께 따라간다. */
@@ -66,6 +72,10 @@ export interface Door extends Opening {
   side: 1 | -1;
   swingRadius: number;
   swingAngle: number;
+  /** 문짝 표면 (마감재 id). 없으면 기본 색 */
+  finish?: Id;
+  /** 미닫이 문짝 수 (옷장처럼 두 장이 겹치는 문은 2). 없으면 1 */
+  panels?: number;
 }
 
 // 'Window'는 DOM 전역 타입과 이름이 겹쳐서 HouseWindow로 쓴다.

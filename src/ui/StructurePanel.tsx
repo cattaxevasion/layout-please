@@ -2,6 +2,7 @@
 
 import { formatCm } from '../logic/measure';
 import { wallFrame } from '../logic/openings';
+import { finishesOf, PLAIN, type FinishKind } from '../model/finishes';
 import * as st from '../model/structure';
 import type { Door, DoorType, Fixture, House, HouseWindow, Room, Selection, Wall } from '../model/types';
 import { actions, store, useApp } from '../store';
@@ -9,6 +10,33 @@ import { getViewCenter } from '../view2d/viewApi';
 import { NumberField } from './NumberField';
 
 const center = () => getViewCenter() ?? { x: 0, y: 0 };
+
+/** 마감재 고르기. extra는 목록 앞에 붙는 선택지 (값, 이름) */
+function FinishSelect(props: {
+  label: string;
+  kind: FinishKind;
+  value: string | undefined;
+  extra: [string, string][];
+  onChange: (v: string | undefined) => void;
+}) {
+  return (
+    <label class="field">
+      <span class="field-label">{props.label}</span>
+      <select value={props.value ?? ''} onChange={(e) => props.onChange(e.currentTarget.value || undefined)}>
+        {props.extra.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+        {finishesOf(props.kind).map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export function StructureTools() {
   const house = useApp((s) => s.history.present.house);
@@ -53,6 +81,14 @@ export function StructureTools() {
 
       <h3>집</h3>
       <NumberField label="천장" value={house.ceilingHeight} min={100} onCommit={actions.setCeilingHeight} />
+      <FinishSelect
+        label="벽지"
+        kind="wall"
+        value={house.wallFinish}
+        extra={[['', '단색 (흰 벽)']]}
+        onChange={actions.setWallFinish}
+      />
+      <p class="hint">모든 벽의 기본 벽지입니다. 벽 하나만 다르게 하려면 그 벽을 선택하세요.</p>
 
       <h3>사용법</h3>
       <ul class="hint shortcuts">
@@ -126,10 +162,23 @@ function RoomEditor({ room, vertex }: { room: Room; vertex?: number }) {
           }}
         />
       </label>
-      <label class="field">
-        <span class="field-label">바닥</span>
-        <input type="color" value={room.floorColor} onChange={(e) => actions.updateRoom(room.id, { floorColor: e.currentTarget.value })} />
-      </label>
+      <FinishSelect
+        label="바닥재"
+        kind="floor"
+        value={room.floorFinish}
+        extra={[['', '단색']]}
+        onChange={(floorFinish) => actions.updateRoom(room.id, { floorFinish })}
+      />
+      {!room.floorFinish && (
+        <label class="field">
+          <span class="field-label">바닥 색</span>
+          <input
+            type="color"
+            value={room.floorColor}
+            onChange={(e) => actions.updateRoom(room.id, { floorColor: e.currentTarget.value })}
+          />
+        </label>
+      )}
 
       <h3>꼭짓점 (cm)</h3>
       <table class="vertex-table">
@@ -195,6 +244,16 @@ function WallEditor({ wall, house }: { wall: Wall; house: House }) {
         <NumberField label="끝X" value={wall.b.x} onCommit={(x) => actions.updateWall(wall.id, { b: { ...wall.b, x } })} />
         <NumberField label="끝Y" value={wall.b.y} onCommit={(y) => actions.updateWall(wall.id, { b: { ...wall.b, y } })} />
       </div>
+      <FinishSelect
+        label="벽지"
+        kind="wall"
+        value={wall.finish}
+        extra={[
+          ['', '집 기본 벽지'],
+          [PLAIN, '단색 (흰 벽)'],
+        ]}
+        onChange={(finish) => actions.updateWall(wall.id, { finish })}
+      />
       <div class="field-group">
         <NumberField label="길이" value={len} min={1} onCommit={(v) => actions.setWallLength(wall.id, v)} />
         <NumberField label="두께" value={wall.thickness} min={1} onCommit={(thickness) => actions.updateWall(wall.id, { thickness })} />
@@ -250,6 +309,22 @@ function DoorEditor({ door }: { door: Door }) {
         <NumberField label="높이" value={door.height} min={50} onCommit={(height) => up({ height })} />
       </div>
       <p class="hint">위치는 벽 시작점에서 문 시작까지의 거리입니다.</p>
+      <FinishSelect
+        label="표면"
+        kind="door"
+        value={door.finish}
+        extra={[['', '기본 (밝은 색)']]}
+        onChange={(finish) => up({ finish })}
+      />
+      {door.type === 'sliding' && (
+        <NumberField
+          label="문짝 수"
+          unit="장"
+          value={door.panels ?? 1}
+          min={1}
+          onCommit={(v) => up({ panels: Math.min(4, Math.max(1, Math.round(v))) })}
+        />
+      )}
       {swings && (
         <div class="field-group">
           <NumberField label="반경" value={door.swingRadius} min={10} onCommit={(swingRadius) => up({ swingRadius })} />

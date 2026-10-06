@@ -29,6 +29,14 @@ function patchIn<T extends { id: Id }>(list: readonly T[], id: Id, patch: Partia
   });
 }
 
+export function setWallFinish(h: House, wallFinish: Id | undefined): House {
+  if (h.wallFinish === wallFinish) return h;
+  const next = { ...h };
+  if (wallFinish) next.wallFinish = wallFinish;
+  else delete next.wallFinish;
+  return next;
+}
+
 export function setCeilingHeight(h: House, v: number): House {
   const ceilingHeight = Math.max(100, v);
   return ceilingHeight === h.ceilingHeight ? h : { ...h, ceilingHeight };
@@ -36,7 +44,11 @@ export function setCeilingHeight(h: House, v: number): House {
 
 // ───────── 방 ─────────
 
-export function updateRoom(h: House, id: Id, patch: Partial<Pick<Room, 'name' | 'floorColor'>>): House {
+export function updateRoom(
+  h: House,
+  id: Id,
+  patch: Partial<Pick<Room, 'name' | 'floorColor' | 'floorFinish'>>,
+): House {
   const rooms = patchIn<Room>(h.rooms, id, patch);
   return rooms ? { ...h, rooms } : h;
 }
@@ -122,7 +134,7 @@ export function addWall(h: House, a: Vec2, b: Vec2, thickness = DEFAULT_WALL_THI
  * 벽 수정. 끝점을 직접 옮기면 방 자동 생성 벽에서 분리한다
  * (그대로 두면 방을 고칠 때 손으로 고친 벽이 덮어써지므로).
  */
-export function updateWall(h: House, id: Id, patch: Partial<Pick<Wall, 'a' | 'b' | 'thickness'>>): House {
+export function updateWall(h: House, id: Id, patch: Partial<Pick<Wall, 'a' | 'b' | 'thickness' | 'finish'>>): House {
   const walls = updateIn(h.walls, id, (w) => {
     const next: Wall = { ...w, ...patch, thickness: Math.max(1, patch.thickness ?? w.thickness) };
     if (shallowEqual(w, next)) return w;

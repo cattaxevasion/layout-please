@@ -5,6 +5,7 @@ import { memo } from 'preact/compat';
 import { signedArea } from '../geometry/polygon';
 import { add, scale } from '../geometry/vec';
 import { doorSwing, openingPolygon, openingSpan, wallFrame, wallPolygon } from '../logic/openings';
+import { finishById } from '../model/finishes';
 import type { Door, House, Room, Selection, Vec2, Wall } from '../model/types';
 
 export const ptsAttr = (pts: readonly Vec2[]) => pts.map((p) => `${p.x},${p.y}`).join(' ');
@@ -22,13 +23,38 @@ export const HouseShapes = memo(function HouseShapes({
   selection: Selection | null;
 }) {
   const walls = new Map(house.walls.map((w) => [w.id, w]));
+  // 바닥재 질감은 3D와 같은 크기·위치(원점 기준)로 반복되는 패턴으로 깐다
+  const floorFinishes = [...new Set(house.rooms.map((r) => r.floorFinish))]
+    .map((id) => finishById(id))
+    .filter((f) => f !== undefined);
   return (
     <>
+      <defs>
+        {floorFinishes.map((f) => (
+          <pattern
+            key={f.id}
+            id={`finish-${f.id}`}
+            patternUnits="userSpaceOnUse"
+            x={0}
+            y={0}
+            width={f.tileCm[0]}
+            height={f.tileCm[1]}
+          >
+            <rect width={f.tileCm[0]} height={f.tileCm[1]} fill={f.color} />
+            <image
+              href={`${import.meta.env.BASE_URL}textures/${f.file}`}
+              width={f.tileCm[0]}
+              height={f.tileCm[1]}
+              preserveAspectRatio="none"
+            />
+          </pattern>
+        ))}
+      </defs>
       {house.rooms.map((r) => (
         <polygon
           key={r.id}
           points={ptsAttr(r.points)}
-          fill={r.floorColor}
+          fill={finishById(r.floorFinish) ? `url(#finish-${r.floorFinish})` : r.floorColor}
           class={`room${isSel(selection, 'room', r.id) ? ' selected' : ''}`}
           data-hit="room"
           data-id={r.id}
