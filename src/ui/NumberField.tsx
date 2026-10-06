@@ -54,7 +54,8 @@ export function NumberField({ label, value, onCommit, unit = 'cm', step = 1, min
         onKeyDown={(e) => {
           const el = e.currentTarget;
           if (e.key === 'Enter') {
-            el.blur(); // blur에서 commit
+            commit(el);
+            el.blur();
           } else if (e.key === 'Escape') {
             dirty.current = false;
             el.value = formatCm(value);

@@ -1,6 +1,7 @@
 // 뷰(2D/3D/패널)는 store를 직접 바꾸지 않고 여기의 액션만 호출한다.
 
 import * as ops from '../model/ops';
+import * as st from '../model/structure';
 import { furnitureFromPreset } from '../model/presets';
 import type {
   FurniturePreset,
@@ -10,6 +11,7 @@ import type {
   Selection,
   SnapSettings,
   UiState,
+  Vec2,
 } from '../model/types';
 import type { AppState } from './appState';
 import type { Store } from './createStore';
@@ -155,6 +157,70 @@ export function createActions(store: Store<AppState>) {
       if (guardReadOnly()) return;
       commit((d) => ops.updateHouse(d, fn));
     },
+    /** {house, id}를 돌려주는 구조 함수를 적용하고 새로 생긴 것을 선택한다 */
+    addStructure(
+      kind: 'room' | 'wall' | 'door' | 'window' | 'fixture',
+      fn: (h: House) => { house: House; id: Id | null },
+    ) {
+      if (guardReadOnly()) return;
+      const r = fn(doc().house);
+      if (!r.id) return;
+      commit((d) => ops.updateHouse(d, () => r.house));
+      setUi({ selection: { kind, id: r.id } as Selection });
+    },
+    setCeilingHeight(v: number) {
+      actions.updateHouse((h) => st.setCeilingHeight(h, v));
+    },
+    updateRoom(id: Id, patch: Parameters<typeof st.updateRoom>[2]) {
+      actions.updateHouse((h) => st.updateRoom(h, id, patch));
+    },
+    moveVertex(id: Id, index: number, p: Vec2) {
+      actions.updateHouse((h) => st.moveVertex(h, id, index, p));
+    },
+    insertVertex(id: Id, edgeIndex: number) {
+      if (guardReadOnly()) return;
+      const r = st.insertVertex(doc().house, id, edgeIndex);
+      if (r.index < 0) return;
+      commit((d) => ops.updateHouse(d, () => r.house));
+      setUi({ selection: { kind: 'room', id, vertex: r.index } });
+    },
+    removeVertex(id: Id, index: number) {
+      actions.updateHouse((h) => st.removeVertex(h, id, index));
+      setUi({ selection: { kind: 'room', id } });
+    },
+    removeRoom(id: Id) {
+      actions.updateHouse((h) => st.removeRoom(h, id));
+    },
+    regenerateRoomWalls(id: Id) {
+      actions.updateHouse((h) => st.regenerateRoomWalls(h, id));
+    },
+    updateWall(id: Id, patch: Parameters<typeof st.updateWall>[2]) {
+      actions.updateHouse((h) => st.updateWall(h, id, patch));
+    },
+    setWallLength(id: Id, length: number) {
+      actions.updateHouse((h) => st.setWallLength(h, id, length));
+    },
+    removeWall(id: Id) {
+      actions.updateHouse((h) => st.removeWall(h, id));
+    },
+    updateDoor(id: Id, patch: Parameters<typeof st.updateDoor>[2]) {
+      actions.updateHouse((h) => st.updateDoor(h, id, patch));
+    },
+    removeDoor(id: Id) {
+      actions.updateHouse((h) => st.removeDoor(h, id));
+    },
+    updateWindow(id: Id, patch: Parameters<typeof st.updateWindow>[2]) {
+      actions.updateHouse((h) => st.updateWindow(h, id, patch));
+    },
+    removeWindow(id: Id) {
+      actions.updateHouse((h) => st.removeWindow(h, id));
+    },
+    updateFixture(id: Id, patch: Parameters<typeof st.updateFixture>[2]) {
+      actions.updateHouse((h) => st.updateFixture(h, id, patch));
+    },
+    removeFixture(id: Id) {
+      actions.updateHouse((h) => st.removeFixture(h, id));
+    },
 
     // ───────── 문서 전체 ─────────
     /** 불러오기 등으로 문서를 통째로 바꾼다. Undo로 되돌릴 수 있다. */
@@ -168,10 +234,38 @@ export function createActions(store: Store<AppState>) {
 
 export type Actions = ReturnType<typeof createActions>;
 
-/** Undo 등으로 선택한 가구가 사라졌으면 선택을 해제한다. */
+/** Undo 등으로 선택한 대상이 사라졌으면 선택을 해제한다. */
 function withValidSelection(s: AppState): AppState {
   const sel = s.ui.selection;
-  if (sel?.kind !== 'furniture') return s;
-  const exists = ops.getActiveLayout(s.history.present).furniture.some((f) => f.id === sel.id);
+  if (!sel) return s;
+  const d = s.history.present;
+  const h = d.house;
+  const has = (list: readonly { id: Id }[]) => list.some((x) => x.id === sel.id);
+  let exists: boolean;
+  switch (sel.kind) {
+    case 'furniture':
+      exists = has(ops.getActiveLayout(d).furniture);
+      break;
+    case 'room': {
+      const room = h.rooms.find((r) => r.id === sel.id);
+      exists = !!room;
+      if (room && sel.vertex !== undefined && sel.vertex >= room.points.length) {
+        return { ...s, ui: { ...s.ui, selection: { kind: 'room', id: sel.id } } };
+      }
+      break;
+    }
+    case 'wall':
+      exists = has(h.walls);
+      break;
+    case 'door':
+      exists = has(h.doors);
+      break;
+    case 'window':
+      exists = has(h.windows);
+      break;
+    case 'fixture':
+      exists = has(h.fixtures);
+      break;
+  }
   return exists ? s : { ...s, ui: { ...s.ui, selection: null } };
 }

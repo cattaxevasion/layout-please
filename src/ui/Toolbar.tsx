@@ -13,10 +13,22 @@ export function Toolbar() {
   const canRedo = useApp(selectCanRedo);
   const view = useApp((s) => s.ui.view);
   const snap = useApp((s) => s.ui.snap);
+  const mode = useApp((s) => s.ui.mode);
+  const readOnly = useApp((s) => s.ui.readOnly);
 
   return (
     <header class="toolbar">
       <strong class="app-title">가구 배치</strong>
+      {!readOnly && (
+        <div class="toolbar-group segmented-inline mode-switch">
+          <button class={mode === 'arrange' ? 'active' : ''} onClick={() => actions.setMode('arrange')}>
+            배치
+          </button>
+          <button class={mode === 'structure' ? 'active' : ''} onClick={() => actions.setMode('structure')}>
+            구조 편집
+          </button>
+        </div>
+      )}
       <LayoutTabs />
       <div class="toolbar-group">
         <button onClick={actions.undo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">

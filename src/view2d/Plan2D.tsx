@@ -1,59 +1,41 @@
 // 2D 평면도 (SVG). 좌표 단위는 cm 그대로 쓰고, 화면 이동·확대는 viewBox로만 처리한다.
+// 배치 모드에서는 가구만, 구조 편집 모드에서는 방·벽·문·창·설비만 조작할 수 있다.
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { pointsAabb, type Segment } from '../geometry/obb';
-import { signedArea } from '../geometry/polygon';
-import { add, scale } from '../geometry/vec';
+import { type Segment } from '../geometry/obb';
+import { dot, sub } from '../geometry/vec';
 import { distancesToWalls, formatCm } from '../logic/measure';
-import { doorSwing, openingPolygon, openingSpan, wallFrame, wallPolygon } from '../logic/openings';
-import { snapRect, snapTargets } from '../logic/snap';
+import { wallFrame } from '../logic/openings';
+import { snapPoint, snapRect, snapTargets, snapToGrid } from '../logic/snap';
 import { BUILTIN_PRESETS } from '../model/presets';
-import type { Door, Furniture, House, Room, Vec2 } from '../model/types';
+import type { Furniture, Vec2 } from '../model/types';
 import { actions, store, useApp } from '../store';
 import { selectFurnitureList, selectHouse, selectSelectedFurniture } from '../store/selectors';
+import { clampScale, fitCamera, houseBounds, type Camera } from './camera';
 import { FurnitureGlyph } from './FurnitureGlyph';
+import { DimText, Grid, HouseShapes, Label } from './HouseShapes';
+import { StructureOverlay } from './StructureOverlay';
 import { registerViewCenter } from './viewApi';
-
-interface Camera {
-  /** 화면 가운데의 월드 좌표 */
-  cx: number;
-  cy: number;
-  /** 1cm가 몇 px인지 */
-  s: number;
-}
-
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 20;
-const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
-
-const ptsAttr = (pts: readonly Vec2[]) => pts.map((p) => `${p.x},${p.y}`).join(' ');
-
-function houseBounds(h: House) {
-  const pts: Vec2[] = h.rooms.flatMap((r) => r.points);
-  for (const w of h.walls) pts.push(...wallPolygon(w));
-  if (pts.length === 0) return { minX: 0, minY: 0, maxX: 500, maxY: 500 };
-  return pointsAabb(pts);
-}
-
-function fitCamera(h: House, w: number, hgt: number): Camera {
-  const b = houseBounds(h);
-  const bw = Math.max(50, b.maxX - b.minX);
-  const bh = Math.max(50, b.maxY - b.minY);
-  const s = clampScale(Math.min(w / bw, hgt / bh) * 0.88);
-  return { cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2, s };
-}
 
 type Gesture =
   | { kind: 'none' }
   | { kind: 'pan'; startX: number; startY: number; cam: Camera; moved: boolean }
-  | { kind: 'drag'; id: string; offset: Vec2; targets: Segment[] }
+  | { kind: 'furniture'; id: string; offset: Vec2; targets: Segment[] }
+  | { kind: 'fixture'; id: string; offset: Vec2; targets: Segment[] }
+  | { kind: 'vertex'; roomId: string; index: number; refs: Vec2[] }
+  | { kind: 'wallEnd'; wallId: string; end: 'a' | 'b'; refs: Vec2[] }
+  | { kind: 'opening'; type: 'door' | 'window'; id: string; grab: number }
   | { kind: 'pinch'; dist: number; mid: Vec2; cam: Camera };
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
 
 export function Plan2D() {
   const house = useApp(selectHouse);
   const furniture = useApp(selectFurnitureList);
   const selected = useApp(selectSelectedFurniture);
-  const snap = useApp((s) => s.ui.snap);
+  const selection = useApp((s) => s.ui.selection);
+  const mode = useApp((s) => s.ui.mode);
+  const gridSize = useApp((s) => s.ui.snap.gridSize);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -67,18 +49,18 @@ export function Plan2D() {
   const pointers = useRef(new Map<number, Vec2>());
   const gesture = useRef<Gesture>({ kind: 'none' });
 
-  // 크기 추적
   useEffect(() => {
     const el = svgRef.current!;
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       const r = el.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
-    });
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
+    measure();
     return () => ro.disconnect();
   }, []);
 
-  // 처음 크기를 알게 되면 집 전체가 보이게
   useEffect(() => {
     if (!cam && size.w > 0 && size.h > 0) setCam(fitCamera(house, size.w, size.h));
   }, [size, cam, house]);
@@ -91,14 +73,12 @@ export function Plan2D() {
     return () => registerViewCenter(null);
   }, []);
 
-  /** 화면(client) 좌표 → 월드(cm) 좌표 */
   function toWorld(clientX: number, clientY: number, c = camRef.current!): Vec2 {
     const r = svgRef.current!.getBoundingClientRect();
     const { w, h } = sizeRef.current;
     return { x: c.cx + (clientX - r.left - w / 2) / c.s, y: c.cy + (clientY - r.top - h / 2) / c.s };
   }
 
-  /** 화면 좌표 (px, py)에 있는 월드 점이 그대로 있도록 확대/축소 */
   function zoomAt(clientX: number, clientY: number, factor: number) {
     const c = camRef.current;
     if (!c) return;
@@ -112,7 +92,6 @@ export function Plan2D() {
     setCam({ cx: wx - px / s, cy: wy - py / s, s });
   }
 
-  // 휠 확대/축소 (preventDefault를 위해 passive가 아닌 리스너로 등록)
   useEffect(() => {
     const el = svgRef.current!;
     const onWheel = (e: WheelEvent) => {
@@ -123,21 +102,88 @@ export function Plan2D() {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  function endDrag() {
-    if (gesture.current.kind === 'drag') {
+  function endEdit() {
+    const k = gesture.current.kind;
+    if (k !== 'none' && k !== 'pan' && k !== 'pinch') {
       actions.endGesture();
       setGuides([]);
     }
   }
 
-  function startPinch() {
-    const [a, b] = [...pointers.current.values()];
-    gesture.current = {
-      kind: 'pinch',
-      dist: Math.hypot(a.x - b.x, a.y - b.y),
-      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-      cam: camRef.current!,
-    };
+  function startPan(e: PointerEvent) {
+    gesture.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, cam: camRef.current!, moved: false };
+  }
+
+  /** 클릭한 요소에서 data-hit 정보를 읽는다 */
+  function hitOf(target: EventTarget | null) {
+    const el = (target as Element | null)?.closest?.('[data-hit]');
+    if (!el) return null;
+    return { kind: el.getAttribute('data-hit')!, id: el.getAttribute('data-id') ?? '', el };
+  }
+
+  function beginStructure(e: PointerEvent): boolean {
+    const hit = hitOf(e.target);
+    if (!hit) return false;
+    const state = store.getState();
+    const h = state.history.present.house;
+    const p = toWorld(e.clientX, e.clientY);
+
+    switch (hit.kind) {
+      case 'vertex': {
+        const index = Number(hit.el.getAttribute('data-index'));
+        actions.select({ kind: 'room', id: hit.id, vertex: index });
+        const refs = h.rooms.flatMap((r) => r.points.filter((_, i) => !(r.id === hit.id && i === index)));
+        actions.beginGesture();
+        gesture.current = { kind: 'vertex', roomId: hit.id, index, refs };
+        return true;
+      }
+      case 'insert': {
+        actions.insertVertex(hit.id, Number(hit.el.getAttribute('data-index')));
+        startPan(e);
+        return true;
+      }
+      case 'wallEnd': {
+        const end = hit.el.getAttribute('data-end') as 'a' | 'b';
+        const refs = [...h.rooms.flatMap((r) => r.points), ...h.walls.filter((w) => w.id !== hit.id).flatMap((w) => [w.a, w.b])];
+        actions.beginGesture();
+        gesture.current = { kind: 'wallEnd', wallId: hit.id, end, refs };
+        return true;
+      }
+      case 'door':
+      case 'window': {
+        const type = hit.kind;
+        actions.select({ kind: type, id: hit.id });
+        const o = type === 'door' ? h.doors.find((d) => d.id === hit.id) : h.windows.find((d) => d.id === hit.id);
+        const w = o && h.walls.find((x) => x.id === o.wallId);
+        if (!o || !w) return true;
+        const s = dot(sub(p, w.a), wallFrame(w).u);
+        actions.beginGesture();
+        gesture.current = { kind: 'opening', type, id: hit.id, grab: s - o.offset };
+        return true;
+      }
+      case 'fixture': {
+        actions.select({ kind: 'fixture', id: hit.id });
+        const f = h.fixtures.find((x) => x.id === hit.id);
+        if (!f) return true;
+        actions.beginGesture();
+        gesture.current = {
+          kind: 'fixture',
+          id: hit.id,
+          offset: { x: p.x - f.x, y: p.y - f.y },
+          targets: snapTargets(h, [], hit.id, state.ui.snap),
+        };
+        return true;
+      }
+      case 'wall':
+        actions.select({ kind: 'wall', id: hit.id });
+        startPan(e);
+        return true;
+      case 'room':
+        actions.select({ kind: 'room', id: hit.id });
+        startPan(e);
+        return true;
+    }
+    return false;
   }
 
   function onPointerDown(e: PointerEvent) {
@@ -147,69 +193,111 @@ export function Plan2D() {
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointers.current.size === 2) {
-      endDrag();
-      startPinch();
+      endEdit();
+      const [a, b] = [...pointers.current.values()];
+      gesture.current = {
+        kind: 'pinch',
+        dist: Math.hypot(a.x - b.x, a.y - b.y),
+        mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        cam: camRef.current,
+      };
       return;
     }
     if (pointers.current.size > 2) return;
 
-    const el = (e.target as Element).closest('[data-fid]');
     const ui = store.getState().ui;
-    if (el && e.button === 0) {
-      const id = el.getAttribute('data-fid')!;
-      actions.select({ kind: 'furniture', id });
-      const f = selectFurnitureList(store.getState()).find((x) => x.id === id);
-      if (!f || ui.readOnly) {
-        gesture.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, cam: camRef.current, moved: false };
-        return;
-      }
-      const p = toWorld(e.clientX, e.clientY);
-      actions.beginGesture();
-      gesture.current = {
-        kind: 'drag',
-        id,
-        offset: { x: p.x - f.x, y: p.y - f.y },
-        targets: snapTargets(house, furniture, id, ui.snap),
-      };
-    } else {
-      gesture.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, cam: camRef.current, moved: false };
+    if (e.button === 1 || ui.readOnly) return startPan(e);
+
+    if (ui.mode === 'structure') {
+      if (!beginStructure(e)) startPan(e);
+      return;
     }
+
+    const el = (e.target as Element).closest('[data-fid]');
+    if (!el) return startPan(e);
+    const id = el.getAttribute('data-fid')!;
+    actions.select({ kind: 'furniture', id });
+    const f = selectFurnitureList(store.getState()).find((x) => x.id === id);
+    if (!f) return startPan(e);
+    const p = toWorld(e.clientX, e.clientY);
+    actions.beginGesture();
+    gesture.current = {
+      kind: 'furniture',
+      id,
+      offset: { x: p.x - f.x, y: p.y - f.y },
+      targets: snapTargets(house, furniture, id, ui.snap),
+    };
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const g = gesture.current;
+    const sn = store.getState().ui.snap;
+    const free = e.altKey; // Alt를 누르고 있으면 스냅을 잠시 끈다
 
-    if (g.kind === 'pan') {
-      const dx = e.clientX - g.startX;
-      const dy = e.clientY - g.startY;
-      if (!g.moved && Math.hypot(dx, dy) < 3) return;
-      g.moved = true;
-      setCam({ ...g.cam, cx: g.cam.cx - dx / g.cam.s, cy: g.cam.cy - dy / g.cam.s });
-    } else if (g.kind === 'drag') {
-      const f = selectFurnitureList(store.getState()).find((x) => x.id === g.id);
-      if (!f) return;
-      const p = toWorld(e.clientX, e.clientY);
-      const raw = { ...f, x: p.x - g.offset.x, y: p.y - g.offset.y };
-      const sn = store.getState().ui.snap;
-      // Alt를 누르고 있으면 스냅을 잠시 끈다
-      const res = e.altKey
-        ? { x: raw.x, y: raw.y, guides: [] }
-        : snapRect(raw, { ...sn, targets: g.targets });
-      actions.moveFurniture(g.id, round1(res.x), round1(res.y));
-      setGuides(res.guides);
-    } else if (g.kind === 'pinch' && pointers.current.size >= 2) {
-      const [a, b] = [...pointers.current.values()];
-      const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-      const r = svgRef.current!.getBoundingClientRect();
-      const { w, h } = sizeRef.current;
-      const s = clampScale(g.cam.s * (dist / g.dist));
-      // 처음 두 손가락 가운데 있던 월드 점이 지금 두 손가락 가운데에 오도록
-      const wx = g.cam.cx + (g.mid.x - r.left - w / 2) / g.cam.s;
-      const wy = g.cam.cy + (g.mid.y - r.top - h / 2) / g.cam.s;
-      setCam({ cx: wx - (mid.x - r.left - w / 2) / s, cy: wy - (mid.y - r.top - h / 2) / s, s });
+    switch (g.kind) {
+      case 'pan': {
+        const dx = e.clientX - g.startX;
+        const dy = e.clientY - g.startY;
+        if (!g.moved && Math.hypot(dx, dy) < 3) return;
+        g.moved = true;
+        setCam({ ...g.cam, cx: g.cam.cx - dx / g.cam.s, cy: g.cam.cy - dy / g.cam.s });
+        return;
+      }
+      case 'furniture':
+      case 'fixture': {
+        const h = store.getState().history.present.house;
+        const f =
+          g.kind === 'furniture'
+            ? selectFurnitureList(store.getState()).find((x) => x.id === g.id)
+            : h.fixtures.find((x) => x.id === g.id);
+        if (!f) return;
+        const p = toWorld(e.clientX, e.clientY);
+        const raw = { ...f, x: p.x - g.offset.x, y: p.y - g.offset.y };
+        const res = free ? { x: raw.x, y: raw.y, guides: [] } : snapRect(raw, { ...sn, targets: g.targets });
+        if (g.kind === 'furniture') actions.moveFurniture(g.id, round1(res.x), round1(res.y));
+        else actions.updateFixture(g.id, { x: round1(res.x), y: round1(res.y) });
+        setGuides(res.guides);
+        return;
+      }
+      case 'vertex':
+      case 'wallEnd': {
+        const p = toWorld(e.clientX, e.clientY);
+        const res = free ? { x: p.x, y: p.y, guides: [] } : snapPoint(p, g.refs, sn);
+        const q = { x: round1(res.x), y: round1(res.y) };
+        if (g.kind === 'vertex') actions.moveVertex(g.roomId, g.index, q);
+        else actions.updateWall(g.wallId, { [g.end]: q });
+        setGuides(res.guides);
+        return;
+      }
+      case 'opening': {
+        const h = store.getState().history.present.house;
+        const o = g.type === 'door' ? h.doors.find((d) => d.id === g.id) : h.windows.find((d) => d.id === g.id);
+        const w = o && h.walls.find((x) => x.id === o.wallId);
+        if (!o || !w) return;
+        const fr = wallFrame(w);
+        const p = toWorld(e.clientX, e.clientY);
+        let offset = dot(sub(p, w.a), fr.u) - g.grab;
+        if (sn.grid && !free) offset = snapToGrid(offset, sn.gridSize);
+        offset = round1(Math.max(0, Math.min(fr.length - o.width, offset)));
+        if (g.type === 'door') actions.updateDoor(g.id, { offset });
+        else actions.updateWindow(g.id, { offset });
+        return;
+      }
+      case 'pinch': {
+        if (pointers.current.size < 2) return;
+        const [a, b] = [...pointers.current.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const r = svgRef.current!.getBoundingClientRect();
+        const { w, h } = sizeRef.current;
+        const s = clampScale(g.cam.s * (dist / g.dist));
+        const wx = g.cam.cx + (g.mid.x - r.left - w / 2) / g.cam.s;
+        const wy = g.cam.cy + (g.mid.y - r.top - h / 2) / g.cam.s;
+        setCam({ cx: wx - (mid.x - r.left - w / 2) / s, cy: wy - (mid.y - r.top - h / 2) / s, s });
+        return;
+      }
     }
   }
 
@@ -217,14 +305,12 @@ export function Plan2D() {
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.delete(e.pointerId);
     const g = gesture.current;
-    if (g.kind === 'pan' && !g.moved) {
-      // 빈 곳을 클릭하면 선택 해제 (가구 위 클릭은 pointerdown에서 이미 선택됨)
-      const onFurniture = (e.target as Element).closest('[data-fid]');
-      if (!onFurniture) actions.select(null);
+    if (g.kind === 'pan' && !g.moved && e.button !== 1) {
+      // 빈 곳 클릭은 선택 해제
+      if (!hitOf(e.target) && !(e.target as Element).closest('[data-fid]')) actions.select(null);
     }
-    endDrag();
+    endEdit();
     if (pointers.current.size === 1 && g.kind === 'pinch') {
-      // 두 손가락 중 하나를 떼면 남은 손가락으로 계속 이동
       const [p] = [...pointers.current.values()];
       gesture.current = { kind: 'pan', startX: p.x, startY: p.y, cam: camRef.current!, moved: true };
     } else if (pointers.current.size === 0) {
@@ -232,7 +318,6 @@ export function Plan2D() {
     }
   }
 
-  // 패널에서 끌어다 놓기
   function onDragOver(e: DragEvent) {
     if (e.dataTransfer?.types.includes('text/x-preset')) e.preventDefault();
   }
@@ -240,9 +325,7 @@ export function Plan2D() {
     const id = e.dataTransfer?.getData('text/x-preset');
     if (!id || !camRef.current) return;
     e.preventDefault();
-    const preset = [...BUILTIN_PRESETS, ...store.getState().history.present.userPresets].find(
-      (p) => p.id === id,
-    );
+    const preset = [...BUILTIN_PRESETS, ...store.getState().history.present.userPresets].find((p) => p.id === id);
     if (preset) {
       const p = toWorld(e.clientX, e.clientY);
       actions.addFromPreset(preset, { x: round1(p.x), y: round1(p.y) });
@@ -252,16 +335,17 @@ export function Plan2D() {
   const viewBox = cam
     ? `${cam.cx - size.w / 2 / cam.s} ${cam.cy - size.h / 2 / cam.s} ${size.w / cam.s} ${size.h / cam.s}`
     : '0 0 100 100';
-  const px = cam ? 1 / cam.s : 1; // 화면 1px의 월드 길이
+  const px = cam ? 1 / cam.s : 1;
+  const structure = mode === 'structure';
 
   const bounds = useMemo(() => houseBounds(house), [house]);
   const distances = useMemo(
-    () => (selected ? distancesToWalls(selected, house) : []),
-    [selected, house],
+    () => (selected && !structure ? distancesToWalls(selected, house) : []),
+    [selected, house, structure],
   );
 
   return (
-    <div class="plan2d">
+    <div class={`plan2d mode-${mode}`}>
       <svg
         ref={svgRef}
         viewBox={viewBox}
@@ -275,50 +359,35 @@ export function Plan2D() {
       >
         {cam && (
           <>
-            <Grid bounds={bounds} cam={cam} gridSize={snap.gridSize} />
-            {house.rooms.map((r) => (
-              <RoomShape key={r.id} room={r} px={px} />
-            ))}
-            {house.walls.map((w) => (
-              <polygon key={w.id} points={ptsAttr(wallPolygon(w))} class="wall" />
-            ))}
-            <Openings house={house} px={px} />
-            {house.fixtures.map((f) => (
-              <g key={f.id} transform={`translate(${f.x} ${f.y}) rotate(${f.rotation})`} class="fixture">
-                <rect x={-f.width / 2} y={-f.depth / 2} width={f.width} height={f.depth} />
-              </g>
-            ))}
-            {house.fixtures.map((f) => (
-              <Label key={f.id} x={f.x} y={f.y} px={px} text={f.name} minSize={Math.min(f.width, f.depth) / px} muted />
-            ))}
-            {furniture.map((f) => (
-              <FurnitureItem key={f.id} f={f} selected={selected?.id === f.id} />
-            ))}
-            {furniture.map((f) => (
-              <Label
-                key={f.id}
-                x={f.x}
-                y={f.y}
-                px={px}
-                text={f.name}
-                sub={selected?.id === f.id ? `${formatCm(f.width)}×${formatCm(f.depth)}` : undefined}
-                minSize={Math.min(f.width, f.depth) / px}
-              />
-            ))}
+            <Grid bounds={bounds} s={cam.s} gridSize={gridSize} />
+            <HouseShapes house={house} px={px} selection={structure ? selection : null} />
+            <g class="furniture-layer">
+              {furniture.map((f) => (
+                <FurnitureItem key={f.id} f={f} selected={!structure && selected?.id === f.id} />
+              ))}
+              {!structure &&
+                furniture.map((f) => (
+                  <Label
+                    key={f.id}
+                    x={f.x}
+                    y={f.y}
+                    px={px}
+                    text={f.name}
+                    sub={selected?.id === f.id ? `${formatCm(f.width)}×${formatCm(f.depth)}` : undefined}
+                    minSize={Math.min(f.width, f.depth) / px}
+                  />
+                ))}
+            </g>
             {distances.map(
               (d) =>
                 d.distance >= 1 && (
                   <g key={d.side} class="dim">
                     <line x1={d.from.x} y1={d.from.y} x2={d.to.x} y2={d.to.y} />
-                    <DimText
-                      x={(d.from.x + d.to.x) / 2}
-                      y={(d.from.y + d.to.y) / 2}
-                      px={px}
-                      text={formatCm(d.distance)}
-                    />
+                    <DimText x={(d.from.x + d.to.x) / 2} y={(d.from.y + d.to.y) / 2} px={px} text={formatCm(d.distance)} />
                   </g>
                 ),
             )}
+            {structure && <StructureOverlay house={house} selection={selection} px={px} />}
             {guides.map((g, i) => (
               <line key={i} class="snap-guide" x1={g.a.x} y1={g.a.y} x2={g.b.x} y2={g.b.y} />
             ))}
@@ -340,8 +409,6 @@ export function Plan2D() {
   );
 }
 
-const round1 = (v: number) => Math.round(v * 10) / 10;
-
 function FurnitureItem({ f, selected }: { f: Furniture; selected: boolean }) {
   return (
     <g
@@ -356,159 +423,5 @@ function FurnitureItem({ f, selected }: { f: Furniture; selected: boolean }) {
         strokeWidth={selected ? 2 : 1}
       />
     </g>
-  );
-}
-
-function RoomShape({ room, px }: { room: Room; px: number }) {
-  const c = polygonCentroid(room.points);
-  const area = Math.abs(signedArea(room.points)) / 10000;
-  return (
-    <>
-      <polygon points={ptsAttr(room.points)} fill={room.floorColor} class="room" />
-      <text x={c.x} y={c.y} class="room-label" font-size={14 * px} text-anchor="middle">
-        {room.name}
-        <tspan x={c.x} dy={16 * px} font-size={11 * px}>
-          {area.toFixed(1)}㎡
-        </tspan>
-      </text>
-    </>
-  );
-}
-
-function polygonCentroid(pts: readonly Vec2[]): Vec2 {
-  const a = signedArea(pts);
-  if (Math.abs(a) < 1e-9) return pts[0] ?? { x: 0, y: 0 };
-  let cx = 0;
-  let cy = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i];
-    const q = pts[(i + 1) % pts.length];
-    const k = p.x * q.y - q.x * p.y;
-    cx += (p.x + q.x) * k;
-    cy += (p.y + q.y) * k;
-  }
-  return { x: cx / (6 * a), y: cy / (6 * a) };
-}
-
-function Openings({ house, px }: { house: House; px: number }) {
-  const walls = new Map(house.walls.map((w) => [w.id, w]));
-  return (
-    <>
-      {house.windows.map((o) => {
-        const w = walls.get(o.wallId);
-        if (!w) return null;
-        const [s, e] = openingSpan(w, o);
-        return (
-          <g key={o.id} class="window">
-            <polygon points={ptsAttr(openingPolygon(w, o))} />
-            <line x1={s.x} y1={s.y} x2={e.x} y2={e.y} />
-          </g>
-        );
-      })}
-      {house.doors.map((d) => {
-        const w = walls.get(d.wallId);
-        return w ? <DoorShape key={d.id} door={d} wall={w} px={px} /> : null;
-      })}
-    </>
-  );
-}
-
-function DoorShape({ door, wall, px }: { door: Door; wall: House['walls'][number]; px: number }) {
-  const gap = <polygon points={ptsAttr(openingPolygon(wall, door))} class="door-gap" />;
-  if (door.type === 'opening') return gap;
-  if (door.type === 'sliding') {
-    // 문짝을 벽 두께 안쪽에 얇은 사각형으로
-    const { n, u } = wallFrame(wall);
-    const [s, e] = openingSpan(wall, door);
-    const off = scale(n, (door.side * wall.thickness) / 6);
-    const t = Math.max(2, wall.thickness / 4) / 2;
-    const ht = scale(n, t);
-    const a = add(s, off);
-    const b = add(e, off);
-    return (
-      <g class="door">
-        {gap}
-        <polygon points={ptsAttr([add(a, ht), add(b, ht), add(b, scale(ht, -1)), add(a, scale(ht, -1))])} />
-        <line x1={b.x - u.x * 6 * px} y1={b.y - u.y * 6 * px} x2={b.x} y2={b.y} class="door-arrow" />
-      </g>
-    );
-  }
-  const { hinge, closedDir, openDir, radius } = doorSwing(wall, door);
-  const open = add(hinge, scale(openDir, radius));
-  const closed = add(hinge, scale(closedDir, radius));
-  const sweep = closedDir.x * openDir.y - closedDir.y * openDir.x > 0 ? 0 : 1;
-  return (
-    <g class="door">
-      {gap}
-      <line x1={hinge.x} y1={hinge.y} x2={open.x} y2={open.y} />
-      <path d={`M ${open.x} ${open.y} A ${radius} ${radius} 0 0 ${sweep} ${closed.x} ${closed.y}`} class="door-arc" />
-    </g>
-  );
-}
-
-function Label(props: {
-  x: number;
-  y: number;
-  px: number;
-  text: string;
-  sub?: string;
-  /** 대상의 짧은 변이 화면에서 몇 px인지. 너무 작으면 글자를 숨긴다 */
-  minSize: number;
-  muted?: boolean;
-}) {
-  const { x, y, px, text, sub, minSize, muted } = props;
-  if (minSize < 26) return null;
-  const fs = 11 * px;
-  return (
-    <text
-      x={x}
-      y={sub ? y - fs * 0.2 : y + fs * 0.35}
-      font-size={fs}
-      text-anchor="middle"
-      class={muted ? 'label muted' : 'label'}
-      stroke-width={3 * px}
-    >
-      {text}
-      {sub && (
-        <tspan x={x} dy={fs * 1.2} font-size={fs * 0.9}>
-          {sub}
-        </tspan>
-      )}
-    </text>
-  );
-}
-
-function DimText({ x, y, px, text }: { x: number; y: number; px: number; text: string }) {
-  const fs = 11 * px;
-  return (
-    <text x={x} y={y + fs * 0.35} font-size={fs} text-anchor="middle" class="dim-text" stroke-width={3 * px}>
-      {text}
-    </text>
-  );
-}
-
-/** 그리드: 화면에서 너무 촘촘하지 않은 간격을 고르고, 1m마다 진한 선 */
-function Grid({ bounds, cam, gridSize }: { bounds: ReturnType<typeof houseBounds>; cam: Camera; gridSize: number }) {
-  const candidates = [gridSize, 10, 25, 50, 100].filter((g) => g >= gridSize);
-  const minor = candidates.find((g) => g * cam.s >= 8) ?? 100;
-  const pad = 2000;
-  const x = Math.floor((bounds.minX - pad) / 100) * 100;
-  const y = Math.floor((bounds.minY - pad) / 100) * 100;
-  const w = bounds.maxX - bounds.minX + pad * 2;
-  const h = bounds.maxY - bounds.minY + pad * 2;
-  const sw = 1 / cam.s;
-  return (
-    <>
-      <defs>
-        <pattern id="grid-minor" width={minor} height={minor} patternUnits="userSpaceOnUse" x={0} y={0}>
-          <path d={`M ${minor} 0 L 0 0 0 ${minor}`} fill="none" class="grid-minor" stroke-width={sw} />
-        </pattern>
-        <pattern id="grid-major" width={100} height={100} patternUnits="userSpaceOnUse" x={0} y={0}>
-          <rect width={100} height={100} fill="url(#grid-minor)" />
-          <path d="M 100 0 L 0 0 0 100" fill="none" class="grid-major" stroke-width={sw} />
-        </pattern>
-      </defs>
-      <rect x={x} y={y} width={w} height={h} fill={minor < 100 ? 'url(#grid-major)' : 'url(#grid-minor)'} />
-    </>
   );
 }

@@ -38,6 +38,8 @@ export interface Wall {
   /** 벽 중심선 끝점 */
   b: Vec2;
   thickness: number;
+  /** 방 둘레에서 자동 생성된 벽이면 그 방 id. 방 모양을 바꾸면 이 벽들이 다시 만들어진다. */
+  roomId?: Id;
 }
 
 /** 문과 창은 벽에 붙어 있어 벽을 옮기면 함께 따라간다. */

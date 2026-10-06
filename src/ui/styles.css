@@ -213,7 +213,7 @@ kbd {
   margin: 6px 0;
 }
 .field-label {
-  width: 36px;
+  width: 40px;
   flex-shrink: 0;
   color: var(--muted);
   font-size: 13px;
@@ -322,13 +322,6 @@ kbd {
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
-.door-arc {
-  fill: none;
-  stroke: #9a948a;
-  stroke-width: 1px;
-  stroke-dasharray: 4 3;
-  vector-effect: non-scaling-stroke;
-}
 .fixture rect {
   fill: #d6d3ce;
   stroke: #9c978f;
@@ -375,4 +368,110 @@ kbd {
   color: var(--muted);
   border-left: 1px solid var(--line);
   background: #eceae5;
+}
+
+/* ───────── 구조 편집 ───────── */
+
+.mode-structure .furniture-layer {
+  opacity: 0.25;
+  pointer-events: none;
+}
+.mode-structure .room,
+.mode-structure .wall,
+.mode-structure .window,
+.mode-structure .door,
+.mode-structure .fixture {
+  cursor: pointer;
+}
+.mode-arrange .room,
+.mode-arrange .wall,
+.mode-arrange .window,
+.mode-arrange .door,
+.mode-arrange .fixture {
+  pointer-events: none;
+}
+.mode-arrange .furniture-layer {
+  pointer-events: auto;
+}
+.wall.selected {
+  fill: var(--accent);
+}
+.window.selected polygon,
+.door.selected .door-gap {
+  fill: var(--accent-weak);
+  stroke: var(--accent);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+.fixture.selected rect {
+  stroke: var(--accent);
+  stroke-width: 2px;
+}
+.room-outline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.vertex-handle {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.vertex-handle.active {
+  fill: var(--accent);
+}
+.insert-handle {
+  cursor: copy;
+}
+.insert-handle circle {
+  fill: var(--accent-weak);
+  stroke: var(--accent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.insert-handle path {
+  stroke: var(--accent);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.door-swing {
+  fill: rgba(120, 110, 100, 0.06);
+  stroke: #9a948a;
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.vertex-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.vertex-table td {
+  padding: 0 2px;
+}
+.vertex-table td:first-child {
+  width: 18px;
+  font-size: 12px;
+}
+.vertex-table .field {
+  margin: 2px 0;
+}
+.vertex-table .field-label {
+  width: 12px;
+}
+.vertex-table .field-unit {
+  display: none;
+}
+.vertex-table tr.active {
+  background: var(--accent-weak);
+}
+.preset.active {
+  background: var(--accent-weak);
+}
+.actions-col.tight {
+  margin-top: 0;
 }

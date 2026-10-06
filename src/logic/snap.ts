@@ -66,6 +66,31 @@ export function snapRect(rect: RectLike, opts: SnapOptions): SnapResult {
   return { x: p.x, y: p.y, guides };
 }
 
+/**
+ * 점 스냅 (방 꼭짓점, 벽 끝점 편집용): 그리드 → 다른 점과 x/y 정렬.
+ * 정렬은 축마다 따로 찾으므로 두 점의 x와 다른 점의 y에 동시에 맞출 수 있다.
+ */
+export function snapPoint(
+  p: Vec2,
+  refs: readonly Vec2[],
+  opts: { grid: boolean; gridSize: number; threshold: number },
+): { x: number; y: number; guides: Segment[] } {
+  let x = opts.grid ? snapToGrid(p.x, opts.gridSize) : p.x;
+  let y = opts.grid ? snapToGrid(p.y, opts.gridSize) : p.y;
+  let bx: Vec2 | null = null;
+  let by: Vec2 | null = null;
+  for (const r of refs) {
+    if (Math.abs(r.x - p.x) <= opts.threshold && (!bx || Math.abs(r.x - p.x) < Math.abs(bx.x - p.x))) bx = r;
+    if (Math.abs(r.y - p.y) <= opts.threshold && (!by || Math.abs(r.y - p.y) < Math.abs(by.y - p.y))) by = r;
+  }
+  if (bx) x = bx.x;
+  if (by) y = by.y;
+  const guides: Segment[] = [];
+  if (bx) guides.push({ a: bx, b: { x, y } });
+  if (by) guides.push({ a: by, b: { x, y } });
+  return { x, y, guides };
+}
+
 /** 스냅 대상 면: 방 실내 면, 다른 가구와 설비의 변 */
 export function snapTargets(
   house: House,
@@ -80,7 +105,7 @@ export function snapTargets(
     }
   }
   if (opts.furniture) {
-    for (const f of house.fixtures) out.push(...rectSides(f));
+    for (const f of house.fixtures) if (f.id !== excludeId) out.push(...rectSides(f));
     for (const f of furniture) if (f.id !== excludeId) out.push(...rectSides(f));
   }
   return out;

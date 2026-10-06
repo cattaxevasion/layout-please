@@ -30,6 +30,16 @@ window.addEventListener('keydown', (e) => {
     actions.select(null);
     return;
   }
+  const sel = state.ui.selection;
+  if (!f && sel && (key === 'delete' || key === 'backspace') && !state.ui.readOnly) {
+    e.preventDefault();
+    if (sel.kind === 'room' && sel.vertex !== undefined) actions.removeVertex(sel.id, sel.vertex);
+    else if (sel.kind === 'wall') actions.removeWall(sel.id);
+    else if (sel.kind === 'door') actions.removeDoor(sel.id);
+    else if (sel.kind === 'window') actions.removeWindow(sel.id);
+    else if (sel.kind === 'fixture') actions.removeFixture(sel.id);
+    return;
+  }
   if (!f) return;
 
   if (mod && key === 'd') {

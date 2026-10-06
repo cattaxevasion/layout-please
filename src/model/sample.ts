@@ -96,9 +96,9 @@ export function createSampleHouse(): House {
   };
 
   // LDK 변: 0 위(현관·화장실 쪽) 1 CL 옆 2 CL 앞 3 오른쪽 외벽 4 양실 위쪽 5 통로–양실(양실 쪽에서 생성) 6 세면실 7 왼쪽 외벽
-  const ldkWalls = wallsFromRoom(ldk.points, [INT, INT, INT, EXT, BED_WALL, PASSAGE_WALL, INT, EXT], [5]);
+  const ldkWalls = wallsFromRoom(ldk.points, [INT, INT, INT, EXT, BED_WALL, PASSAGE_WALL, INT, EXT], [5], ldk.id);
   // 양실 변: 0 위(LDK와 공유하므로 생략) 1 오른쪽 외벽 2 발코니 3·4 기둥 5 왼쪽
-  const bedroomWalls = wallsFromRoom(bedroom.points, [BED_WALL, EXT, EXT, INT, INT, PASSAGE_WALL], [0]);
+  const bedroomWalls = wallsFromRoom(bedroom.points, [BED_WALL, EXT, EXT, INT, INT, PASSAGE_WALL], [0], bedroom.id);
   const [ldkTop, , ldkClosetFront, , ldkBedroomSide, ldkWashroomSide, ldkLeft] = ldkWalls;
   const [, bedroomBalcony] = bedroomWalls;
 

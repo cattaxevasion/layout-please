@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snapRect, snapToGrid, type SnapOptions } from './snap';
+import { snapPoint, snapRect, snapToGrid, type SnapOptions } from './snap';
 
 // 0~300 × 0~200 방의 실내 면
 const room = [
@@ -68,5 +68,20 @@ describe('snapRect', () => {
     expect(snapRect(rect(95, 100), opts({ targets: other })).x).toBe(100);
     // y가 멀리 떨어져 있으면(가구 y 275~325) 붙지 않음
     expect(snapRect(rect(95, 300), opts({ targets: other })).x).toBe(95);
+  });
+});
+
+describe('snapPoint', () => {
+  const refs = [
+    { x: 0, y: 0 },
+    { x: 200, y: 150 },
+  ];
+  it('다른 점의 x, y에 각각 맞춘다', () => {
+    const r = snapPoint({ x: 197, y: 4 }, refs, { grid: false, gridSize: 10, threshold: 8 });
+    expect(r).toMatchObject({ x: 200, y: 0 });
+    expect(r.guides).toHaveLength(2);
+  });
+  it('정렬할 점이 없으면 그리드', () => {
+    expect(snapPoint({ x: 63, y: 77 }, refs, { grid: true, gridSize: 5, threshold: 8 })).toMatchObject({ x: 65, y: 75 });
   });
 });
