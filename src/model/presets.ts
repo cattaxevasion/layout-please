@@ -23,8 +23,10 @@ export const BUILTIN_PRESETS: readonly FurniturePreset[] = [
   p('my-side-table', '사이드 테이블', 'bookshelf', 39, 30, 67, '#ddd6c3', MY_GROUP),
   p('my-metal-shelf', '수납 선반 (검정)', 'metalShelf', 85, 55, 110, '#2b2b2b', MY_GROUP),
   p('my-water-server', '워터서버', 'waterServer', 27.1, 37, 116.2, '#f4f4f2', MY_GROUP),
-  // 샤프 SJ-GD14D (137L): 폭 480 × 깊이 600 × 높이 1,125mm
+  // 샤프 SJ-GD14D (137L) 48×60×112.5 위에 히타치 전자레인지 48.6×41.2×29.6
+  p('my-fridge-microwave', '냉장고 + 전자레인지', 'fridgeMicrowave', 48.6, 60, 142.1, '#f4f4f2', MY_GROUP),
   p('my-fridge', '냉장고 (SJ-GD14D)', 'fridge', 48, 60, 112.5, '#f4f4f2', MY_GROUP),
+  p('my-microwave', '전자레인지', 'microwave', 48.6, 41.2, 29.6, '#f4f4f2', MY_GROUP),
 
   p('bed-single', '침대 (싱글)', 'bed', 100, 200, 45, '#c9b79c'),
   p('bed-queen', '침대 (퀸)', 'bed', 150, 200, 45, '#c9b79c'),
@@ -56,6 +58,8 @@ export const SHAPE_LABELS: Record<ShapeKind, string> = {
   metalShelf: '금속 선반',
   fridge: '냉장고',
   waterServer: '워터서버',
+  microwave: '전자레인지',
+  fridgeMicrowave: '냉장고 + 전자레인지',
 };
 
 export function furnitureFromPreset(

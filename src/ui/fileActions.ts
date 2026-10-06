@@ -1,7 +1,7 @@
 // 파일·공유 관련 화면 동작 (다운로드, 파일 선택, 확인 창 등 브라우저 기능을 쓰는 부분).
 
 import { DocError } from '../model/migrate';
-import { createSampleDoc, createSampleHouse } from '../model/sample';
+import { createSampleDoc, createSampleHouse, fridge } from '../model/sample';
 import type { ProjectDoc } from '../model/types';
 import {
   cloneLayoutFresh,
@@ -55,11 +55,18 @@ export function resetToSample() {
 
 /** 배치안과 내 프리셋은 그대로 두고 집 구조만 최신 샘플로 바꾼다 (샘플 집을 고친 뒤 반영할 때) */
 export function resetHouseToSample() {
-  if (!confirm('집 구조(방·벽·문·창·설비)만 최신 샘플로 바꿀까요?\n배치안과 가구는 그대로 둡니다. (되돌리기로 취소할 수 있습니다)')) {
+  if (!confirm('집 구조(방·벽·문·창·설비)만 최신 샘플로 바꿀까요?\n배치안과 가구는 그대로 두고, 냉장고가 없는 배치안에는 냉장고를 넣습니다. (되돌리기로 취소할 수 있습니다)')) {
     return;
   }
   const doc = store.getState().history.present;
-  actions.replaceDoc({ ...doc, house: createSampleHouse() });
+  // 예전에는 냉장고가 집 구조(붙박이)였다. 이제는 가구이므로 냉장고가 없는 배치안에는 같은 자리에 넣어 준다.
+  const f = fridge();
+  const layouts = doc.layouts.map((l) =>
+    l.furniture.some((x) => x.presetId === f.presetId || x.shape === 'fridge' || x.shape === 'fridgeMicrowave')
+      ? l
+      : { ...l, furniture: [{ ...fridge() }, ...l.furniture] },
+  );
+  actions.replaceDoc({ ...doc, house: createSampleHouse(), layouts });
   actions.notify('집 구조를 최신 샘플로 바꿨습니다.');
 }
 

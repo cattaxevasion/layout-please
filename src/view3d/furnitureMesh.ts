@@ -49,6 +49,9 @@ function box(parent: THREE.Object3D, mat: THREE.Material, w: number, h: number, 
 /** 짙은 금속·손잡이용 재질 (가구 색과 상관없이) */
 const METAL = new THREE.MeshStandardMaterial({ color: '#3c3d3f', roughness: 0.45, metalness: 0.4 });
 const KNOB = new THREE.MeshStandardMaterial({ color: '#4a4a4a', roughness: 0.5 });
+const GLASS = new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.15, metalness: 0.2 });
+/** 여러 가구가 같이 쓰는 재질. 가구마다 복제해서 쓰고, 지울 때 원본은 남긴다 */
+const SHARED = new Set<THREE.Material>([METAL, KNOB, GLASS]);
 
 /** 바닥 기준 원기둥 (반지름 r, 높이 h) */
 function cylinder(parent: THREE.Object3D, mat: THREE.Material, r: number, h: number, x: number, y0: number, z: number) {
@@ -74,6 +77,41 @@ function legs(g: THREE.Group, mat: THREE.Material, W: number, D: number, h: numb
     for (const sz of [-1, 1]) {
       box(g, mat, size, h, size, sx * (W / 2 - inset), 0, sz * (D / 2 - inset));
     }
+  }
+}
+
+/** 냉장실(위)·냉동실(아래) 두 문과 사이 손잡이 줄 */
+function buildFridge(g: THREE.Group, W: number, D: number, H: number, p: Palette) {
+  const doorT = 2;
+  box(g, p.main, W, H, D - doorT, 0, 0, -doorT / 2);
+  const split = H * 0.4;
+  box(g, p.main, W - 0.6, split - 1.5, doorT, 0, 0.5, D / 2 - doorT / 2); // 냉동실 문
+  box(g, p.main, W - 0.6, H - split - 1.5, doorT, 0, split + 1, D / 2 - doorT / 2); // 냉장실 문
+  box(g, METAL, W - 2, 1.2, 1.5, 0, split - 1.2, D / 2 + 0.3); // 손잡이 줄
+}
+
+/** 전자레인지: 받침 다리, 왼쪽 검은 유리문과 손잡이, 오른쪽 조작부(표시창, 다이얼 2개) */
+function buildMicrowave(g: THREE.Group, W: number, D: number, H: number, p: Palette) {
+  const foot = 1.5;
+  const bodyD = D - 2;
+  box(g, p.main, W, H - foot, bodyD, 0, foot, -1);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(g, KNOB, 3, foot, 3, sx * (W / 2 - 4), 0, sz * (bodyD / 2 - 4) - 1);
+  const front = D / 2 - 1;
+  const doorW = W * 0.74;
+  const doorX = -W / 2 + doorW / 2 + 1;
+  box(g, GLASS, doorW, H - foot - 4, 0.8, doorX, foot + 2, front + 0.4);
+  box(g, p.main, 2.2, H - foot - 6, 2, doorX + doorW / 2 - 2, foot + 3, front + 1.4); // 손잡이
+  const panelX = W / 2 - (W - doorW) / 2;
+  box(g, GLASS, 5, 2.2, 0.5, panelX, H * 0.78, front + 0.3); // 표시창
+  for (const [y, r] of [
+    [H * 0.55, 2.4],
+    [H * 0.25, 3],
+  ]) {
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.6, 20), p.main);
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(panelX, y, front + 0.8);
+    knob.castShadow = true;
+    g.add(knob);
   }
 }
 
@@ -209,14 +247,20 @@ const builders: Record<ShapeKind, (g: THREE.Group, W: number, D: number, H: numb
     }
   },
 
-  // 냉장실(위)·냉동실(아래) 두 문과 사이 손잡이 줄
-  fridge(g, W, D, H, p) {
-    const doorT = 2;
-    box(g, p.main, W, H, D - doorT, 0, 0, -doorT / 2);
-    const split = H * 0.4;
-    box(g, p.main, W - 0.6, split - 1.5, doorT, 0, 0.5, D / 2 - doorT / 2); // 냉동실 문
-    box(g, p.main, W - 0.6, H - split - 1.5, doorT, 0, split + 1, D / 2 - doorT / 2); // 냉장실 문
-    box(g, METAL, W - 2, 1.2, 1.5, 0, split - 1.2, D / 2 + 0.3); // 손잡이 줄
+  fridge: buildFridge,
+  microwave: buildMicrowave,
+
+  // 냉장고 위에 전자레인지 (전자레인지는 냉장고 앞면에 맞춰 올린다)
+  fridgeMicrowave(g, W, D, H, p) {
+    const mwH = Math.min(29.6, H * 0.3);
+    const mwD = Math.min(41.2, D);
+    const fridge = new THREE.Group();
+    buildFridge(fridge, Math.min(W, 48), D, H - mwH, p);
+    g.add(fridge);
+    const mw = new THREE.Group();
+    buildMicrowave(mw, W, mwD, mwH, p);
+    mw.position.set(0, H - mwH, D / 2 - mwD / 2);
+    g.add(mw);
   },
 
   // 아래 몸통 + 뒤 기둥 + 위 헤드(앞으로 튀어나옴), 그 사이가 물 받는 칸
@@ -265,7 +309,7 @@ export function buildFurniture(f: Pick<Furniture, 'shape' | 'width' | 'depth' | 
   g.traverse((o) => {
     const mesh = o as THREE.Mesh;
     const m = mesh.material as THREE.Material | undefined;
-    if (m === METAL || m === KNOB) {
+    if (m && SHARED.has(m)) {
       if (!clones.has(m)) clones.set(m, m.clone());
       mesh.material = clones.get(m)!;
     }
@@ -281,7 +325,7 @@ export const furnitureShapeKey = (f: Pick<Furniture, 'shape' | 'width' | 'depth'
 export function disposeGroup(g: THREE.Object3D) {
   g.traverse((o) => {
     const m = (o as THREE.Mesh).material;
-    const keep = (x: THREE.Material) => x === METAL || x === KNOB;
+    const keep = (x: THREE.Material) => SHARED.has(x);
     if (Array.isArray(m)) m.forEach((x) => !keep(x) && x.dispose());
     else if (m && !keep(m)) m.dispose();
     const geom = (o as THREE.Mesh).geometry;

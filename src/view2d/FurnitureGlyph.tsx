@@ -64,6 +64,8 @@ export function FurnitureGlyph({ f, fill, stroke, strokeWidth }: Props) {
     case 'tvStand':
     case 'fridge':
     case 'waterServer':
+    case 'microwave':
+    case 'fridgeMicrowave':
       // 정면 쪽에 선을 그어 앞뒤를 구분
       return (
         <>

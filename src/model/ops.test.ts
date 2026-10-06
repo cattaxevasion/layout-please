@@ -97,9 +97,10 @@ describe('사용자 프리셋', () => {
   it('가구를 프리셋으로 저장', () => {
     const d = createSampleDoc();
     const id = firstId(d);
-    const d2 = ops.saveFurnitureAsPreset(d, id, '우리 소파');
+    const src = ops.findFurniture(d, id)!;
+    const d2 = ops.saveFurnitureAsPreset(d, id, '우리 것');
     expect(d2.userPresets).toHaveLength(1);
-    expect(d2.userPresets[0]).toMatchObject({ name: '우리 소파', builtin: false, shape: 'sofa' });
+    expect(d2.userPresets[0]).toMatchObject({ name: '우리 것', builtin: false, shape: src.shape, width: src.width });
     expect(ops.deleteUserPreset(d2, d2.userPresets[0].id).userPresets).toHaveLength(0);
   });
 });

@@ -116,7 +116,9 @@ export type ShapeKind =
   | 'drawers'
   | 'metalShelf'
   | 'fridge'
-  | 'waterServer';
+  | 'waterServer'
+  | 'microwave'
+  | 'fridgeMicrowave';
 
 export interface Furniture {
   id: Id;
